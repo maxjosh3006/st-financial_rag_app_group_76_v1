@@ -7,6 +7,7 @@ import re
 from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer
 from thefuzz import process  # Using thefuzz for fuzzy matching
+from sklearn.preprocessing import MinMaxScaler
 from pypdf import PdfReader
 from thefuzz import process
 
