@@ -32,7 +32,7 @@ def chunk_text(text, chunk_size=300):
     return [" ".join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size//2)]
 
 # ✅ Load Data
-pdf_path = "/workspaces/st-financial_rag_app_group_76/data/BMW_Finance_NV_Annual_Report_2023.pdf"
+pdf_path = "BMW_Finance_NV_Annual_Report_2023.pdf"
 pdf_text = load_pdf(pdf_path)
 tables = extract_tables_from_pdf(pdf_path)
 text_chunks = chunk_text(pdf_text)
