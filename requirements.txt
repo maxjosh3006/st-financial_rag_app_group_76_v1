@@ -7,3 +7,5 @@ sentence-transformers
 thefuzz
 torch
 transformers
+pypdf
+langchain
