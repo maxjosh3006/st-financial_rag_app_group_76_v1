@@ -1,5 +1,5 @@
 # ✅ Load Financial PDF & Process Data
-
+from pypdf import PdfReader
 def load_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         text = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
