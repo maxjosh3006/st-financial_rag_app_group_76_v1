@@ -1,0 +1,9 @@
+streamlit
+pdfplumber
+faiss-cpu
+numpy
+rank_bm25
+sentence-transformers
+thefuzz
+torch
+transformers
