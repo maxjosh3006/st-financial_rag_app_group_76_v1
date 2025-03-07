@@ -1,11 +1,11 @@
 # ✅ Load Financial PDF & Process Data
-@st.cache_data
+
 def load_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         text = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
     return text
 
-@st.cache_data
+
 def extract_tables_from_pdf(pdf_path):
     extracted_tables = []
     with pdfplumber.open(pdf_path) as pdf:
@@ -15,7 +15,7 @@ def extract_tables_from_pdf(pdf_path):
                 extracted_tables.append(table)
     return extracted_tables
 
-@st.cache_data
+
 def chunk_text(text, chunk_size=300):
     words = text.split()
     return [" ".join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size//2)]
