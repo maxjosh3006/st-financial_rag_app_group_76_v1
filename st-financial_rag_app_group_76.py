@@ -1,6 +1,7 @@
 # ✅ Load Financial PDF & Process Data
 import streamlit as st
 import pdfplumber
+import torch
 import faiss
 import numpy as np
 import re
