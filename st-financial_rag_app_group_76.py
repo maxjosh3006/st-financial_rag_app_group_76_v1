@@ -1,5 +1,15 @@
 # ✅ Load Financial PDF & Process Data
+import streamlit as st
+import pdfplumber
+import faiss
+import numpy as np
+import re
+from rank_bm25 import BM25Okapi
+from sentence_transformers import SentenceTransformer
+from thefuzz import process  # Using thefuzz for fuzzy matching
 from pypdf import PdfReader
+from thefuzz import process
+
 def load_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         text = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
