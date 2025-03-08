@@ -99,7 +99,7 @@ def extract_financial_value(tables, query):
         return ["No valid financial data found"], 0
 
    for table in tables:
-        for row in table:
+       for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             if best_match in row_text:
                 # Enhanced Regex for Handling Various Number Formats
@@ -116,8 +116,9 @@ classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-
 
 # Define keywords for known financial topics
 relevant_keywords = [
-    "revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", "earnings"
-    "financial performance", "cash flow", "balance sheet", "receivables", "accounts receivable"
+    "revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", "earnings",
+    "financial performance", "cash flow", "balance sheet", "receivables", "accounts receivable",
+    "trade receivables", "total receivables"
 ]
 
 def classify_query(query, threshold=0.4):  # Lowered threshold for flexible matching
