@@ -4,7 +4,7 @@ import faiss
 import numpy as np
 import re
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer util
 from thefuzz import process
 from sklearn.preprocessing import MinMaxScaler
 
@@ -44,17 +44,18 @@ index.add(chunk_embeddings)
 tokenized_chunks = [chunk.split() for chunk in text_chunks]
 bm25 = BM25Okapi(tokenized_chunks)
 
-# ✅ Multi-Stage Retrieval with Improved Scoring
 # ✅ Improved Multi-Stage Retrieval with Better Confidence Calculation
 def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.7):
-    """Enhanced Retrieval with Improved Confidence Calculation."""
+    """
+    Enhanced Multi-Stage Retrieval that applies Min-Max Scaling and uses Mean BM25 Scores.
+    """
     query_embedding = embedding_model.encode([query])
 
     # 🔹 Stage 1: BM25 Keyword Search
     bm25_scores = bm25.get_scores(query.split())
     top_bm25_indices = np.argsort(bm25_scores)[-bm25_k:]
-    
-    # Improved BM25 Confidence - Mean of Top-K Scores
+
+    # Mean of Top-K BM25 Scores for Improved Stability
     bm25_confidence = np.mean(sorted(bm25_scores)[-bm25_k:]) * 100
 
     # 🔹 Stage 2: FAISS Vector Search
@@ -67,7 +68,7 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.7):
 
     # 🔹 Stage 3: Re-Ranking (BM25 + FAISS Scores)
     final_scores = {}
-    faiss_confidence = 0  # Initialize FAISS confidence
+    faiss_confidence = 0
     for i in set(top_bm25_indices) | set(top_faiss_indices):
         bm25_score = bm25_scores[i] if i in top_bm25_indices else 0
         faiss_score = -np.linalg.norm(query_embedding - chunk_embeddings[i])  # L2 distance
@@ -77,24 +78,24 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.7):
     # Normalize FAISS Confidence
     faiss_confidence = (faiss_confidence + 1) * 50  # Scale from -1 to 1 into 0-100
 
-    # 🔹 Final Confidence Score
-    final_confidence = max(bm25_confidence, faiss_confidence)
+    # 🔹 Final Confidence Score (Capped)
+    final_confidence = calculate_confidence(bm25_confidence, faiss_confidence)
 
-    # Get Top K Chunks
     top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
-    return [text_chunks[i] for i in top_chunks], round(final_confidence, 2)
+    return [text_chunks[i] for i in top_chunks], final_confidence
 
 # ✅ Improved Financial Data Extraction with Flexible Matching
 def extract_financial_value(tables, query):
-    """Enhanced Financial Data Extraction with Flexible Matching."""
+    """
+    Enhanced Financial Data Extraction with Flexible Matching for financial terms.
+    """
     possible_headers = []
-
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             possible_headers.append(row_text)
 
-    # 🔹 Improved Fuzzy Matching Threshold
+    # Improved Fuzzy Matching Threshold for Better Results
     extraction_result = process.extractOne(query, possible_headers, score_cutoff=70)
 
     if extraction_result:
@@ -102,7 +103,6 @@ def extract_financial_value(tables, query):
     else:
         return ["No valid financial data found"], 0  # No match → Confidence = 0
 
-    # 🔹 Extract Correct Numbers from the Matched Row
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
@@ -114,7 +114,6 @@ def extract_financial_value(tables, query):
     return ["No valid financial data found"], 0
 
 # ✅ Irrelevant Query Handling
-from sentence_transformers import SentenceTransformer, util
 
 # Load the embedding model (same as used for FAISS)
 classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
@@ -128,17 +127,19 @@ relevant_keywords = [
 # Encode relevant keywords for similarity checks
 keyword_embeddings = classification_model.encode(relevant_keywords)
 
-def classify_query(query, threshold=0.5): # Raised threshold to reduce errors
-    """Classifies the query as 'relevant' or 'irrelevant' using semantic similarity."""
-    query_embedding = classification_model.encode(query)
-    
-    # Calculate similarity scores with relevant keywords
-    similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
+scaler = MinMaxScaler(feature_range=(0, 100))
 
-    # If similarity to any financial term is above the threshold, classify as relevant
-    if max(similarity_scores) >= threshold:
-        return "relevant"
-    return "irrelevant"
+def calculate_confidence(retrieval_confidence, table_confidence):
+    """
+    Combines retrieval and table extraction confidence, ensuring the final score is capped at 100%.
+    """
+    # Rescale confidence values and ensure they are meaningful
+    normalized_retrieval_conf = min(max(retrieval_confidence, 0), 100)
+    normalized_table_conf = min(max(table_confidence, 0), 100)
+    
+    # Final Confidence Score (Capped at 100%)
+    final_confidence = round((normalized_retrieval_conf + normalized_table_conf) / 2, 2)
+    return final_confidence
 
 def calculate_confidence(retrieval_confidence, table_confidence):
     """
