@@ -91,18 +91,19 @@ def extract_financial_value(tables, query):
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             possible_headers.append(row_text)
-    extraction_result = process.extractOne(query, possible_headers, score_cutoff=85)
+    extraction_result = process.extractOne(query, possible_headers, score_cutoff=70)
 
     if extraction_result:
         best_match, score = extraction_result
     else:
         return ["No valid financial data found"], 0
 
-    for table in tables:
+   for table in tables:
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             if best_match in row_text:
-                numbers = [cell for cell in row if re.match(r"\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?", str(cell))]
+                # Enhanced Regex for Handling Various Number Formats
+                numbers = [cell for cell in row if re.match(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", str(cell))]
                 if len(numbers) >= 2:
                     return numbers[:2], round(score, 2)
 
@@ -119,10 +120,10 @@ relevant_keywords = [
     "financial performance", "cash flow", "balance sheet", "receivables", "accounts receivable"
 ]
 
-def classify_query(query, threshold=0.5):  # Raised threshold to reduce errors
+def classify_query(query, threshold=0.4):  # Lowered threshold for flexible matching
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
-    
+
     if max(similarity_scores) >= threshold:
         return "relevant"
     return "irrelevant"
