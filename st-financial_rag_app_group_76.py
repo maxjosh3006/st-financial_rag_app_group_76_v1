@@ -26,7 +26,8 @@ def extract_financial_value(tables, query):
             row_text = " ".join(str(cell) for cell in row if cell)
             possible_headers.append(row_text)
 
-    extraction_result = process.extractOne(query, possible_headers, score_cutoff=85)
+    # Broader Matching for Flexible Queries
+    extraction_result = process.extractOne(query, possible_headers, score_cutoff=70)
 
     if extraction_result:
         best_match, score = extraction_result
@@ -37,7 +38,8 @@ def extract_financial_value(tables, query):
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             if best_match in row_text:
-                numbers = [cell for cell in row if re.match(r"\d{1,3}(?:,\d{3})*(?:\.\d+)?", str(cell))]
+                # Enhanced Regex for Diverse Number Formats
+                numbers = [cell for cell in row if re.match(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", str(cell))]
                 if len(numbers) >= 2:
                     return numbers[:2], round(score, 2)
 
