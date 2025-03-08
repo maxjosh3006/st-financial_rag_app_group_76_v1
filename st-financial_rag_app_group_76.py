@@ -194,7 +194,7 @@ if st.sidebar.button("Run Test Queries"):
 
     test_queries = [
         ("Total Receivables from BMW Group companies", "High Confidence"),
-        ("Net Income , "Low Confidence"),
+        ("Net Income" , "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
