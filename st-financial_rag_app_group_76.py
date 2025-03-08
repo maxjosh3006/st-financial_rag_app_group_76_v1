@@ -45,18 +45,14 @@ tokenized_chunks = [chunk.split() for chunk in text_chunks]
 bm25 = BM25Okapi(tokenized_chunks)
 
 # ✅ Improved Multi-Stage Retrieval with Better Confidence Calculation
-def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.7):
-    """
-    Enhanced Multi-Stage Retrieval that applies Min-Max Scaling and uses Mean BM25 Scores.
-    """
+# ✅ Multi-Stage Retrieval with Improved Scoring
+def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
     query_embedding = embedding_model.encode([query])
 
     # 🔹 Stage 1: BM25 Keyword Search
     bm25_scores = bm25.get_scores(query.split())
+    max_bm25_score = max(bm25_scores)
     top_bm25_indices = np.argsort(bm25_scores)[-bm25_k:]
-
-    # Mean of Top-K BM25 Scores for Improved Stability
-    bm25_confidence = np.mean(sorted(bm25_scores)[-bm25_k:]) * 100
 
     # 🔹 Stage 2: FAISS Vector Search
     filtered_embeddings = np.array([chunk_embeddings[i] for i in top_bm25_indices])
@@ -66,48 +62,43 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.7):
     _, faiss_ranks = faiss_index.search(query_embedding, k)
     top_faiss_indices = [top_bm25_indices[i] for i in faiss_ranks[0]]
 
-    # 🔹 Stage 3: Re-Ranking (BM25 + FAISS Scores)
+    # 🔹 Stage 3: Re-Ranking with Normalization
     final_scores = {}
-    faiss_confidence = 0
     for i in set(top_bm25_indices) | set(top_faiss_indices):
         bm25_score = bm25_scores[i] if i in top_bm25_indices else 0
-        faiss_score = -np.linalg.norm(query_embedding - chunk_embeddings[i])  # L2 distance
-        final_scores[i] = alpha * bm25_score + (1 - alpha) * faiss_score
-        faiss_confidence = max(faiss_confidence, faiss_score)  # Highest FAISS score
+        faiss_score = -np.linalg.norm(query_embedding - chunk_embeddings[i])
+        final_scores[i] = alpha * (bm25_score / max_bm25_score) + (1 - alpha) * (faiss_score + 1)
 
-    # Normalize FAISS Confidence
-    faiss_confidence = (faiss_confidence + 1) * 50  # Scale from -1 to 1 into 0-100
+    # 🔹 Filter Irrelevant Responses
+    if max_bm25_score < 3.0:
+        return ["Irrelevant question detected."], 0  # Low BM25 = Irrelevant
 
-    # 🔹 Final Confidence Score (Capped)
-    final_confidence = calculate_confidence(bm25_confidence, faiss_confidence)
-
+    # Final Confidence Score
+    final_confidence = round(max(final_scores.values()) * 100, 2)
     top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
+
     return [text_chunks[i] for i in top_chunks], final_confidence
 
 # ✅ Improved Financial Data Extraction with Flexible Matching
 def extract_financial_value(tables, query):
-    """
-    Enhanced Financial Data Extraction with Flexible Matching for financial terms.
-    """
     possible_headers = []
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             possible_headers.append(row_text)
 
-    # Improved Fuzzy Matching Threshold for Better Results
-    extraction_result = process.extractOne(query, possible_headers, score_cutoff=70)
+    extraction_result = process.extractOne(query, possible_headers, score_cutoff=85)
 
     if extraction_result:
         best_match, score = extraction_result
     else:
-        return ["No valid financial data found"], 0  # No match → Confidence = 0
+        return ["No valid financial data found"], 0
 
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             if best_match in row_text:
-                numbers = [cell for cell in row if re.match(r"\d{1,3}(?:,\d{3})*(?:\.\d+)?", str(cell))]
+                numbers = [cell for cell in row if re.match(r"\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?", str(cell))]
                 if len(numbers) >= 2:
                     return numbers[:2], round(score, 2)
 
