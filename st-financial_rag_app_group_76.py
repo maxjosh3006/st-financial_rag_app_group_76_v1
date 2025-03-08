@@ -125,43 +125,60 @@ st.title("📊 Financial Statement Q&A")
 query = st.text_input("Enter your financial question:")
 
 if query:
-    retrieved_chunks, retrieval_confidence = multistage_retrieve(query)
-    retrieved_text = "\n".join(retrieved_chunks)
-    financial_values, table_confidence = extract_financial_value(tables, query)
+    query_type = classify_query(query)  # 🔹 Classify the query first
 
-    final_confidence = round((retrieval_confidence + table_confidence) / 2, 2)
-
-    st.write("### ✅ Retrieved Context")
-    st.success(retrieved_text)
-
-    if financial_values and financial_values[0] != "No valid financial data found":
-        st.write("### 📊 Extracted Financial Data")
-        st.info(f"**2023:** {financial_values[0]}, **2022:** {financial_values[1]}")
+    if query_type == "irrelevant":
+        st.warning("⚠️ This appears to be an irrelevant question.")
+        st.write("**🔍 Confidence Score:** 0%")
     else:
-        st.warning("No valid financial data found for this query.")
+        # Proceed with retrieval if query is relevant
+        retrieved_chunks, retrieval_confidence = multistage_retrieve(query)
+        retrieved_text = "\n".join(retrieved_chunks)
+        financial_values, table_confidence = extract_financial_value(tables, query)
 
-    st.write(f"### 🔍 Confidence Score: {final_confidence}%")
+        # Show confidence scores separately
+        st.write("### ✅ Retrieved Context")
+        st.success(retrieved_text)
+        st.write(f"**🔍 Retrieval Confidence:** {retrieval_confidence}%")
+        st.write(f"**🔍 Table Extraction Confidence:** {table_confidence}%")
 
-# ✅ Testing & Validation
-st.sidebar.header("🔍 Testing & Validation")
+        final_confidence = round((retrieval_confidence + table_confidence) / 2, 2)
+        st.write(f"### 🔍 Final Confidence Score: {final_confidence}%")
 
-test_queries = [
-    ("Total Receivables from BMW Group companies", "High Confidence"),
-    ("Revenue Growth over 5 years", "Low Confidence"),
-    ("What is the capital of France?", "Irrelevant")
-]
+        if financial_values and financial_values[0] != "No valid financial data found":
+            st.write("### 📊 Extracted Financial Data")
+            st.info(f"**2023:** {financial_values[0]}, **2022:** {financial_values[1]}")
+        else:
+            st.warning("⚠️ No valid financial data found. Try rephrasing your query for better results.")
 
-for test_query, confidence_level in test_queries:
-    retrieved_chunks, retrieval_confidence = multistage_retrieve(test_query)
-    retrieved_text = "\n".join(retrieved_chunks)
-    financial_values, table_confidence = extract_financial_value(tables, test_query)
+# ✅ Testing & Validation - Triggered by Button for Cleaner UI
+if st.sidebar.button("Run Test Queries"):
+    st.sidebar.header("🔍 Testing & Validation")
 
-    final_confidence = round((retrieval_confidence + table_confidence) / 2, 2)
+    test_queries = [
+        ("Total Receivables from BMW Group companies", "High Confidence"),
+        ("Revenue Growth over 5 years", "Low Confidence"),
+        ("What is the capital of France?", "Irrelevant")
+    ]
 
-    st.sidebar.write(f"**🔹 Retrieved Context:** {retrieved_text[:500]}...")
-    st.sidebar.write(f"**🔍 Confidence Score:** {final_confidence}%")
+    for test_query, confidence_level in test_queries:
+        query_type = classify_query(test_query)
 
-    if financial_values and financial_values[0] != "No valid financial data found":
-        st.sidebar.write(f"📊 **Extracted Financial Data:** 2023: {financial_values[0]}, 2022: {financial_values[1]}")
-    else:
-        st.sidebar.warning("⚠️ No valid financial data found.")
+        if query_type == "irrelevant":
+            st.sidebar.write(f"**🔹 Query:** {test_query} (❌ Irrelevant)")
+            st.sidebar.write("**🔍 Confidence Score:** 0%")
+            continue  # Skip retrieval steps for irrelevant queries
+
+        retrieved_chunks, retrieval_confidence = multistage_retrieve(test_query)
+        retrieved_text = "\n".join(retrieved_chunks)
+        financial_values, table_confidence = extract_financial_value(tables, test_query)
+
+        final_confidence = round((retrieval_confidence + table_confidence) / 2, 2)
+
+        st.sidebar.write(f"**🔹 Query:** {test_query}")
+        st.sidebar.write(f"**🔍 Confidence Score:** {final_confidence}%")
+
+        if financial_values and financial_values[0] != "No valid financial data found":
+            st.sidebar.write(f"📊 **Extracted Data:** 2023: {financial_values[0]}, 2022: {financial_values[1]}")
+        else:
+            st.sidebar.warning("⚠️ No valid financial data found.")
