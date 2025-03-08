@@ -1,62 +1,128 @@
-import os
-import pandas as pd
-from sentence_transformers import SentenceTransformer, util
+import streamlit as st
+import pdfplumber
+import faiss
+import numpy as np
+import re
 from rank_bm25 import BM25Okapi
-from langchain.chains import RetrievalQA
-from langchain.llms import OpenAI
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
+from sentence_transformers import SentenceTransformer, util
+from thefuzz import process
+from sklearn.preprocessing import MinMaxScaler
 
-# Load financial data
-financial_data = pd.read_csv("financial_statements.csv")
+# ✅ Load PDF
+def load_pdf(pdf_path):
+    with pdfplumber.open(pdf_path) as pdf:
+        text = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+    return text
 
-# Chunking strategy (heading-based)
-def custom_chunking(text, chunk_size=100):
-    chunks = []
-    current_chunk = []
-    for line in text.split("\n"):
-        if line.strip().startswith("#") or "Income Statement" in line:
-            if current_chunk:
-                chunks.append(" ".join(current_chunk))
-                current_chunk = []
-        current_chunk.append(line)
-    if current_chunk:
-        chunks.append(" ".join(current_chunk))
-    return chunks
+def extract_tables_from_pdf(pdf_path):
+    extracted_tables = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            tables = page.extract_tables()
+            for table in tables:
+                extracted_tables.append(table)
+    return extracted_tables
 
-# BM25 Retrieval for initial candidate selection
-bm25 = BM25Okapi([chunk for chunk in custom_chunking(financial_data.to_string())])
+def chunk_text(text, chunk_size=300):
+    words = text.split()
+    return [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size // 2)]
 
-# Embedding Model for Re-ranking
-embedding_model = SentenceTransformer("ProsusAI/finbert")
+# ✅ Load Data
+pdf_path = "BMW_Finance_NV_Annual_Report_2023.pdf"
+pdf_text = load_pdf(pdf_path)
+tables = extract_tables_from_pdf(pdf_path)
+text_chunks = chunk_text(pdf_text)
 
-# FAISS Index for Re-ranking
-documents = custom_chunking(financial_data.to_string())
-embeddings = embedding_model.encode(documents, convert_to_tensor=True)
-faiss_index = FAISS.from_documents(documents, HuggingFaceEmbeddings(model_name="ProsusAI/finbert"))
+# ✅ Embedding Model
+embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+chunk_embeddings = np.array([embedding_model.encode(chunk) for chunk in text_chunks])
 
-# Guardrail for irrelevant queries
-def query_guardrail(query):
-    valid_terms = ["net income", "revenue", "expenses", "assets", "liabilities"]
-    return any(term in query.lower() for term in valid_terms)
+dimension = chunk_embeddings.shape[1]
+index = faiss.IndexFlatL2(dimension)
+index.add(chunk_embeddings)
 
-# Retrieval Pipeline
-def retrieve_answer(query):
-    if not query_guardrail(query):
-        return "❌ Irrelevant query detected. Please ask financial questions."
-    
-    # Stage 1: BM25 Retrieval
-    bm25_results = bm25.get_top_n(query.split(), documents, n=5)
-    
-    # Stage 2: Re-ranking using FinBERT
-    query_embedding = embedding_model.encode(query, convert_to_tensor=True)
-    re_ranked_docs = sorted(bm25_results, key=lambda doc: util.pytorch_cos_sim(query_embedding, embedding_model.encode(doc))[0].item(), reverse=True)
+tokenized_chunks = [chunk.split() for chunk in text_chunks]
+bm25 = BM25Okapi(tokenized_chunks)
 
-    # Stage 3: Summarization (Optional)
-    best_answer = re_ranked_docs[0]  # Top-ranked document
-    return best_answer
+# ✅ Improved Multi-Stage Retrieval with Better Confidence Calculation
+# ✅ Multi-Stage Retrieval with Improved Scoring
+def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
+    query_embedding = embedding_model.encode([query])
 
-# Sample Queries
-print(retrieve_answer("Total Receivables from BMW Group companies"))
-print(retrieve_answer("Net Income"))
-print(retrieve_answer("What is the capital of France?"))
+    # 🔹 Stage 1: BM25 Keyword Search
+    bm25_scores = bm25.get_scores(query.split())
+    max_bm25_score = max(bm25_scores)
+    top_bm25_indices = np.argsort(bm25_scores)[-bm25_k:]
+
+    # 🔹 Stage 2: FAISS Vector Search
+    filtered_embeddings = np.array([chunk_embeddings[i] for i in top_bm25_indices])
+    faiss_index = faiss.IndexFlatL2(filtered_embeddings.shape[1])
+    faiss_index.add(filtered_embeddings)
+
+    _, faiss_ranks = faiss_index.search(query_embedding, k)
+    top_faiss_indices = [top_bm25_indices[i] for i in faiss_ranks[0]]
+
+    # 🔹 Stage 3: Re-Ranking with Normalization
+    final_scores = {}
+    for i in set(top_bm25_indices) | set(top_faiss_indices):
+        bm25_score = bm25_scores[i] if i in top_bm25_indices else 0
+        faiss_score = -np.linalg.norm(query_embedding - chunk_embeddings[i])
+        final_scores[i] = alpha * (bm25_score / max_bm25_score) + (1 - alpha) * (faiss_score + 1)
+
+    # 🔹 Filter Irrelevant Responses
+    if max_bm25_score < 3.0:
+        return ["Irrelevant question detected."], 0  # Low BM25 = Irrelevant
+
+    # Final Confidence Score
+    final_confidence = round(max(final_scores.values()) * 100, 2)
+    top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
+
+    return [text_chunks[i] for i in top_chunks], final_confidence
+
+# ✅ Improved Financial Data Extraction with Flexible Matching
+def extract_financial_value(tables, query):
+    possible_headers = []
+    for table in tables:
+        for row in table:
+            row_text = " ".join(str(cell) for cell in row if cell)
+            possible_headers.append(row_text)
+
+    extraction_result = process.extractOne(query, possible_headers, score_cutoff=85)
+
+    if extraction_result:
+        best_match, score = extraction_result
+    else:
+        return ["No valid financial data found"], 0
+
+    for table in tables:
+        for row in table:
+            row_text = " ".join(str(cell) for cell in row if cell)
+            if best_match in row_text:
+                numbers = [cell for cell in row if re.match(r"\d{1,3}(?:,\d{3})*(?:\.\d+)?", str(cell))]
+                if len(numbers) >= 2
+                    return numbers[:2], round(score, 2)
+
+    return ["No valid financial data found"], 0
+
+# ✅ Streamlit UI
+st.title("📊 Financial Statement Q&A")
+query = st.text_input("Enter your financial question:")
+
+if query:
+    retrieved_chunks, retrieval_confidence = multistage_retrieve(query)
+    retrieved_text = "\n".join(retrieved_chunks)
+    financial_values, table_confidence = extract_financial_value(tables, query)
+
+    # Improved Confidence Calculation
+    final_confidence = min((retrieval_confidence + table_confidence) / 2, 100)
+
+    # Show confidence scores separately
+    st.write("### ✅ Retrieved Context")
+    st.success(retrieved_text)
+    st.write(f"### 🔍 Final Confidence Score: {final_confidence}%")
+
+    if financial_values and financial_values[0] != "No valid financial data found":
+        st.write("### 📊 Extracted Financial Data")
+        st.info(f"**2023:** {financial_values[0]}, **2022:** {financial_values[1]}")
+    else:
+        st.warning("⚠️ No valid financial data found. Try rephrasing your query for better results.")
