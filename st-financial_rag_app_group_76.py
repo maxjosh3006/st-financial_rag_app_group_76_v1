@@ -98,7 +98,7 @@ def extract_financial_value(tables, query):
     else:
         return ["No valid financial data found"], 0
 
-   for table in tables:
+    for table in tables:
        for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             if best_match in row_text:
