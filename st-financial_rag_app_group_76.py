@@ -81,12 +81,16 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
 
 # ✅ Improved Financial Data Extraction with Flexible Matching
 def extract_financial_value(tables, query):
-    possible_headers = []
+    possible_headers = [
+        " ".join(str(cell) for cell in row if cell).strip()
+    for table in tables
+    for row in table
+    if any(cell for cell in row)  # Filters out empty rows
+    ]
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             possible_headers.append(row_text)
-
     extraction_result = process.extractOne(query, possible_headers, score_cutoff=85)
 
     if extraction_result:
