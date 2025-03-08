@@ -114,11 +114,31 @@ def extract_financial_value(tables, query):
     return ["No valid financial data found"], 0
 
 # ✅ Irrelevant Query Handling
-def classify_query(query, confidence_score, threshold=40):
-    """Classifies the query as Irrelevant if the confidence is too low."""
-    if confidence_score < threshold:
-        return "❌ Irrelevant Query Detected"
-    return "✅ Valid Financial Query"
+from sentence_transformers import SentenceTransformer, util
+
+# Load the embedding model (same as used for FAISS)
+classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+# Define keywords for known financial topics
+relevant_keywords = [
+    "revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
+    "financial performance", "cash flow", "balance sheet"
+]
+
+# Encode relevant keywords for similarity checks
+keyword_embeddings = classification_model.encode(relevant_keywords)
+
+def classify_query(query, threshold=0.4):
+    """Classifies the query as 'relevant' or 'irrelevant' using semantic similarity."""
+    query_embedding = classification_model.encode(query)
+    
+    # Calculate similarity scores with relevant keywords
+    similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
+
+    # If similarity to any financial term is above the threshold, classify as relevant
+    if max(similarity_scores) >= threshold:
+        return "relevant"
+    return "irrelevant"
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
