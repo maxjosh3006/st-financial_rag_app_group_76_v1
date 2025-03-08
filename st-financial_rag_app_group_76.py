@@ -87,17 +87,29 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.7):
 # ✅ Improved Financial Data Extraction with Flexible Matching
 def extract_financial_value(tables, query):
     """
-    Improved Financial Data Extraction with Exact Matching for Key Terms.
+    Enhanced Financial Data Extraction with Flexible Matching for financial terms.
     """
-    pattern = re.compile(r'(?i)Total\s*Receivables|Revenue Growth', re.IGNORECASE)
+    possible_headers = []
+    for table in tables:
+        for row in table:
+            row_text = " ".join(str(cell) for cell in row if cell)
+            possible_headers.append(row_text)
+
+    # Improved Fuzzy Matching Threshold for Better Results
+    extraction_result = process.extractOne(query, possible_headers, score_cutoff=70)
+
+    if extraction_result:
+        best_match, score = extraction_result
+    else:
+        return ["No valid financial data found"], 0  # No match → Confidence = 0
 
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
-            if pattern.search(row_text):
+            if best_match in row_text:
                 numbers = [cell for cell in row if re.match(r"\d{1,3}(?:,\d{3})*(?:\.\d+)?", str(cell))]
                 if len(numbers) >= 2:
-                    return numbers[:2], 90  # Assuming strong match = 90% confidence
+                    return numbers[:2], round(score, 2)
 
     return ["No valid financial data found"], 0
 
@@ -182,7 +194,7 @@ if st.sidebar.button("Run Test Queries"):
 
     test_queries = [
         ("Total Receivables from BMW Group companies", "High Confidence"),
-        ("Revenue Growth over 5 years", "Low Confidence"),
+        ("Net Income for year 2022 2023", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
