@@ -1,221 +1,68 @@
-import streamlit as st
-import pdfplumber
-import faiss
-import numpy as np
 import re
-from rank_bm25 import BM25Okapi
+import numpy as np
+import streamlit as st
+from concurrent.futures import ThreadPoolExecutor
 from sentence_transformers import SentenceTransformer, util
 from thefuzz import process
-from sklearn.preprocessing import MinMaxScaler
+from rank_bm25 import BM25Okapi
 
-# ✅ Load PDF
-def load_pdf(pdf_path):
-    with pdfplumber.open(pdf_path) as pdf:
-        text = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
-    return text
+# Initialize models and data
+classification_model = SentenceTransformer('all-MiniLM-L6-v2')
+keyword_embeddings = classification_model.encode([
+    "revenue", "profit", "expenses", "cash flow", "net income"
+])
 
-def extract_tables_from_pdf(pdf_path):
-    extracted_tables = []
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            tables = page.extract_tables()
-            for table in tables:
-                extracted_tables.append(table)
-    return extracted_tables
+def calculate_confidence(retrieval_confidence, table_confidence, weighting_factor=0.6):
+    return round(min(weighting_factor * retrieval_confidence + (1 - weighting_factor) * table_confidence, 100), 2)
 
-def chunk_text(text, chunk_size=300):
-    words = text.split()
-    return [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size // 2)]
-
-# ✅ Load Data
-pdf_path = "BMW_Finance_NV_Annual_Report_2023.pdf"
-pdf_text = load_pdf(pdf_path)
-tables = extract_tables_from_pdf(pdf_path)
-text_chunks = chunk_text(pdf_text)
-
-# ✅ Embedding Model
-embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-chunk_embeddings = np.array([embedding_model.encode(chunk) for chunk in text_chunks])
-
-dimension = chunk_embeddings.shape[1]
-index = faiss.IndexFlatL2(dimension)
-index.add(chunk_embeddings)
-
-tokenized_chunks = [chunk.split() for chunk in text_chunks]
-bm25 = BM25Okapi(tokenized_chunks)
-
-# ✅ Improved Multi-Stage Retrieval with Better Confidence Calculation
-def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.7):
-    """
-    Enhanced Multi-Stage Retrieval that applies Min-Max Scaling and uses Mean BM25 Scores.
-    """
-    query_embedding = embedding_model.encode([query])
-
-    # 🔹 Stage 1: BM25 Keyword Search
-    bm25_scores = bm25.get_scores(query.split())
-    top_bm25_indices = np.argsort(bm25_scores)[-bm25_k:]
-
-    # Mean of Top-K BM25 Scores for Improved Stability
-    bm25_confidence = np.mean(sorted(bm25_scores)[-bm25_k:]) * 100
-
-    # 🔹 Stage 2: FAISS Vector Search
-    filtered_embeddings = np.array([chunk_embeddings[i] for i in top_bm25_indices])
-    faiss_index = faiss.IndexFlatL2(filtered_embeddings.shape[1])
-    faiss_index.add(filtered_embeddings)
-
-    _, faiss_ranks = faiss_index.search(query_embedding, k)
-    top_faiss_indices = [top_bm25_indices[i] for i in faiss_ranks[0]]
-
-    # 🔹 Stage 3: Re-Ranking (BM25 + FAISS Scores)
-    final_scores = {}
-    faiss_confidence = 0
-    for i in set(top_bm25_indices) | set(top_faiss_indices):
-        bm25_score = bm25_scores[i] if i in top_bm25_indices else 0
-        faiss_score = -np.linalg.norm(query_embedding - chunk_embeddings[i])  # L2 distance
-        final_scores[i] = alpha * bm25_score + (1 - alpha) * faiss_score
-        faiss_confidence = max(faiss_confidence, faiss_score)  # Highest FAISS score
-
-    # Normalize FAISS Confidence
-    faiss_confidence = (faiss_confidence + 1) * 50  # Scale from -1 to 1 into 0-100
-
-    # 🔹 Final Confidence Score (Capped)
-    final_confidence = calculate_confidence(bm25_confidence, faiss_confidence)
-
-    top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
-    return [text_chunks[i] for i in top_chunks], final_confidence
-
-# ✅ Improved Financial Data Extraction with Flexible Matching
 def extract_financial_value(tables, query):
-    """
-    Enhanced Financial Data Extraction with Flexible Matching for financial terms.
-    """
-    possible_headers = []
+    number_pattern = re.compile(r'(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+\.\d+[MBK]?)')
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
-            possible_headers.append(row_text)
-
-    # Improved Fuzzy Matching Threshold for Better Results
-    extraction_result = process.extractOne(query, possible_headers, score_cutoff=70)
-
-    if extraction_result:
-        best_match, score = extraction_result
-    else:
-        return ["No valid financial data found"], 0  # No match → Confidence = 0
-
-    for table in tables:
-        for row in table:
-            row_text = " ".join(str(cell) for cell in row if cell)
-            if best_match in row_text:
-                numbers = [cell for cell in row if re.match(r"\d{1,3}(?:,\d{3})*(?:\.\d+)?", str(cell))]
+            if process.extractOne(query, [row_text], score_cutoff=70):
+                numbers = [cell for cell in row if number_pattern.match(str(cell))]
                 if len(numbers) >= 2:
-                    return numbers[:2], round(score, 2)
-
+                    return numbers[:2], 90
     return ["No valid financial data found"], 0
 
-# ✅ Irrelevant Query Handling
-
-# Load the embedding model (same as used for FAISS)
-classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-
-# Define keywords for known financial topics
-relevant_keywords = [
-    "revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", "earnings"
-    "financial performance", "cash flow", "balance sheet", "receivables", "accounts receivable"
-]
-
-def classify_query(query, threshold=0.5):  # Raised threshold to reduce errors
+def classify_query(query, threshold=0.6):
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
-    
-    if max(similarity_scores) >= threshold:
-        return "relevant"
-    return "irrelevant"
+    return "relevant" if max(similarity_scores) >= threshold else "irrelevant"
 
-# Encode relevant keywords for similarity checks
-keyword_embeddings = classification_model.encode(relevant_keywords)
+def retrieve_with_guardrails(query, bm25_threshold=20, faiss_threshold=-0.7):
+    retrieved_chunks, retrieval_confidence = multistage_retrieve(query)
+    if retrieval_confidence < bm25_threshold or retrieval_confidence < faiss_threshold:
+        return ["⚠️ No reliable data found. Try rephrasing your query."], 0
+    return retrieved_chunks, retrieval_confidence
 
-scaler = MinMaxScaler(feature_range=(0, 100))
+def parallel_bm25_scoring(query, k=10):
+    with ThreadPoolExecutor() as executor:
+        bm25_scores = list(executor.map(lambda x: bm25.get_scores(x.split()), [query]))
+    return np.argsort(bm25_scores)[-k:]
 
-def calculate_confidence(retrieval_confidence, table_confidence):
-    """
-    Combines retrieval and table extraction confidence, ensuring the final score is capped at 100%.
-    """
-    # Rescale confidence values and ensure they are meaningful
-    normalized_retrieval_conf = min(max(retrieval_confidence, 0), 100)
-    normalized_table_conf = min(max(table_confidence, 0), 100)
-    
-    # Final Confidence Score (Capped at 100%)
-    final_confidence = round((normalized_retrieval_conf + normalized_table_conf) / 2, 2)
-    return final_confidence
-
-def calculate_confidence(retrieval_confidence, table_confidence):
-    """
-    Combines retrieval and table extraction confidence, ensuring the final score is capped at 100%.
-    """
-    # Combine scores and cap at 100%
-    final_confidence = min((retrieval_confidence + table_confidence) / 2, 100)
-
-    return round(final_confidence, 2)
-
-# ✅ Streamlit UI
-st.title("📊 Financial Statement Q&A")
-query = st.text_input("Enter your financial question:")
-
-if query:
-    query_type = classify_query(query)  # 🔹 Classify the query first
-
-    if query_type == "irrelevant":
-        st.warning("⚠️ This appears to be an irrelevant question.")
-        st.write("**🔍 Confidence Score:** 0%")
+def display_financial_data(data):
+    if data[0] != "No valid financial data found":
+        st.markdown(f"""
+        ### 📊 Extracted Financial Data
+        - **2023:** {data[0]}
+        - **2022:** {data[1]}
+        """)
     else:
-        # Proceed with retrieval if query is relevant
-        retrieved_chunks, retrieval_confidence = multistage_retrieve(query)
-        retrieved_text = "\n".join(retrieved_chunks)
-        financial_values, table_confidence = extract_financial_value(tables, query)
+        st.warning("⚠️ No valid financial data found. Try rephrasing your query.")
 
-         # Improved Confidence Calculation
-        final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
+# Streamlit UI
+st.title("📈 Financial Statement Analysis Tool")
+query = st.text_input("Enter your financial query:")
 
-        # Show confidence scores separately
-        st.write("### ✅ Retrieved Context")
-        st.success(retrieved_text)
-        st.write(f"### 🔍 Final Confidence Score: {final_confidence}%")
+if st.button("Analyze"):
+    if classify_query(query) == "irrelevant":
+        st.error("❌ Irrelevant query. Please ask about financial data.")
+    else:
+        retrieved_data, confidence = retrieve_with_guardrails(query)
+        extracted_data, extraction_confidence = extract_financial_value(retrieved_data, query)
+        final_confidence = calculate_confidence(confidence, extraction_confidence)
 
-        if financial_values and financial_values[0] != "No valid financial data found":
-            st.write("### 📊 Extracted Financial Data")
-            st.info(f"**2023:** {financial_values[0]}, **2022:** {financial_values[1]}")
-        else:
-            st.warning("⚠️ No valid financial data found. Try rephrasing your query for better results.")
-
-# ✅ Testing & Validation - Triggered by Button for Cleaner UI
-if st.sidebar.button("Run Test Queries"):
-    st.sidebar.header("🔍 Testing & Validation")
-
-    test_queries = [
-        ("Total Receivables from BMW Group companies", "High Confidence"),
-        ("Net Income for year 2022 2023", "Low Confidence"),
-        ("What is the capital of France?", "Irrelevant")
-    ]
-
-    for test_query, confidence_level in test_queries:
-        query_type = classify_query(test_query)
-
-        if query_type == "irrelevant":
-            st.sidebar.write(f"**🔹 Query:** {test_query} (❌ Irrelevant)")
-            st.sidebar.write("**🔍 Confidence Score:** 0%")
-            continue  # Skip retrieval steps for irrelevant queries
-
-        retrieved_chunks, retrieval_confidence = multistage_retrieve(test_query)
-        retrieved_text = "\n".join(retrieved_chunks)
-        financial_values, table_confidence = extract_financial_value(tables, test_query)
-
-        final_confidence = round((retrieval_confidence + table_confidence) / 2, 2)
-
-        st.sidebar.write(f"**🔹 Query:** {test_query}")
-        st.sidebar.write(f"**🔍 Confidence Score:** {final_confidence}%")
-
-        if financial_values and financial_values[0] != "No valid financial data found":
-            st.sidebar.write(f"📊 **Extracted Data:** 2023: {financial_values[0]}, 2022: {financial_values[1]}")
-        else:
-            st.sidebar.warning("⚠️ No valid financial data found.")
+        st.success(f"✅ Confidence Score: {final_confidence}%")
+        display_financial_data(extracted_data)
