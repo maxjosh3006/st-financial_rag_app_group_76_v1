@@ -121,14 +121,14 @@ classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-
 
 # Define keywords for known financial topics
 relevant_keywords = [
-    "revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
-    "financial performance", "cash flow", "balance sheet"
+    "revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", "earnings"
+    "financial performance", "cash flow", "balance sheet", "receivables", "accounts receivable"
 ]
 
 # Encode relevant keywords for similarity checks
 keyword_embeddings = classification_model.encode(relevant_keywords)
 
-def classify_query(query, threshold=0.4):
+def classify_query(query, threshold=0.5): # Raised threshold to reduce errors
     """Classifies the query as 'relevant' or 'irrelevant' using semantic similarity."""
     query_embedding = classification_model.encode(query)
     
@@ -139,6 +139,15 @@ def classify_query(query, threshold=0.4):
     if max(similarity_scores) >= threshold:
         return "relevant"
     return "irrelevant"
+
+def calculate_confidence(retrieval_confidence, table_confidence):
+    """
+    Combines retrieval and table extraction confidence, ensuring the final score is capped at 100%.
+    """
+    # Combine scores and cap at 100%
+    final_confidence = min((retrieval_confidence + table_confidence) / 2, 100)
+
+    return round(final_confidence, 2)
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
@@ -156,13 +165,12 @@ if query:
         retrieved_text = "\n".join(retrieved_chunks)
         financial_values, table_confidence = extract_financial_value(tables, query)
 
+         # Improved Confidence Calculation
+        final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
+
         # Show confidence scores separately
         st.write("### ✅ Retrieved Context")
         st.success(retrieved_text)
-        st.write(f"**🔍 Retrieval Confidence:** {retrieval_confidence}%")
-        st.write(f"**🔍 Table Extraction Confidence:** {table_confidence}%")
-
-        final_confidence = round((retrieval_confidence + table_confidence) / 2, 2)
         st.write(f"### 🔍 Final Confidence Score: {final_confidence}%")
 
         if financial_values and financial_values[0] != "No valid financial data found":
