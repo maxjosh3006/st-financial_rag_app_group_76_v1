@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.11.11-slim as builder
+FROM python:3.12.9-slim as builder
 
 WORKDIR /st-financial_rag_app_group_76
 
@@ -8,7 +8,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Runtime stage
-FROM python:3.11.11-slim
+FROM python:3.12.9-slim
 
 WORKDIR /st-financial_rag_app
 
