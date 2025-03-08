@@ -4,7 +4,7 @@ import faiss
 import numpy as np
 import re
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer util
+from sentence_transformers import SentenceTransformer, util
 from thefuzz import process
 from sklearn.preprocessing import MinMaxScaler
 
