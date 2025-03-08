@@ -99,7 +99,7 @@ def extract_financial_value(tables, query):
             row_text = " ".join(str(cell) for cell in row if cell)
             if best_match in row_text:
                 numbers = [cell for cell in row if re.match(r"\d{1,3}(?:,\d{3})*(?:\.\d+)?", str(cell))]
-                if len(numbers) >= 2
+                if len(numbers) >= 2:
                     return numbers[:2], round(score, 2)
 
     return ["No valid financial data found"], 0
