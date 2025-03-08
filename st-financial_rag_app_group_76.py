@@ -124,6 +124,14 @@ relevant_keywords = [
     "financial performance", "cash flow", "balance sheet", "receivables", "accounts receivable"
 ]
 
+def classify_query(query, threshold=0.5):  # Raised threshold to reduce errors
+    query_embedding = classification_model.encode(query)
+    similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
+    
+    if max(similarity_scores) >= threshold:
+        return "relevant"
+    return "irrelevant"
+
 # Encode relevant keywords for similarity checks
 keyword_embeddings = classification_model.encode(relevant_keywords)
 
