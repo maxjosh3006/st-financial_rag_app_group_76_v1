@@ -81,27 +81,28 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
 
 # ✅ Improved Financial Data Extraction with Flexible Matching
 def extract_financial_value(tables, query):
+    # Clean headers for better matching
     possible_headers = [
-        " ".join(str(cell) for cell in row if cell).strip()
+        " ".join(str(cell) for cell in row if cell).strip().lower()
         for table in tables
         for row in table
         if any(cell for cell in row)  # Filters out empty rows
     ]
 
     # Flexible Search with Lower Threshold for Partial Matches
-    extraction_result = process.extractOne(query, possible_headers, score_cutoff=60)
+    extraction_result = process.extractOne(query.lower(), possible_headers, score_cutoff=60)
 
     if extraction_result:
         best_match, score = extraction_result
     else:
         return ["No valid financial data found"], 0
 
-    # Enhanced Matching Logic - Look for Financial Data in Neighboring Cells
+    # Enhanced Logic: Row-Based Search for Values in Adjacent Cells
     for table in tables:
         for row in table:
-            row_text = " ".join(str(cell) for cell in row if cell)
+            row_text = " ".join(str(cell) for cell in row if cell).strip().lower()
             if best_match in row_text:
-                # Improved Regex for Varied Formats
+                # Improved Regex for Varied Number Formats
                 numbers = [
                     cell for cell in row 
                     if re.match(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", str(cell))
@@ -138,10 +139,12 @@ scaler = MinMaxScaler(feature_range=(0, 100))
 
 def calculate_confidence(retrieval_confidence, table_confidence):
     """
-    Combines retrieval and table extraction confidence with weighted scaling.
-    """
-    # Assign higher weight to table confidence for financial data
-    final_confidence = min((retrieval_confidence * 0.4) + (table_confidence * 0.6), 100)
+     if table_confidence > 70:
+        return round((retrieval_confidence * 0.3) + (table_confidence * 0.7), 2)
+    elif table_confidence > 40:
+        return round((retrieval_confidence * 0.5) + (table_confidence * 0.5), 2)
+    else:
+        return round((retrieval_confidence * 0.7) + (table_confidence * 0.3), 2)
 
     return round(final_confidence, 2)
 
