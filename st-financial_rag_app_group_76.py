@@ -39,8 +39,18 @@ def extract_financial_values(text):
     pattern = r'\b(?:\$|€|£)?[\d,.]+(?:\s?(bn|m|million|billion))?\b'
     return re.findall(pattern, text, re.IGNORECASE)
 
-# ✅ Multi-Stage Retrieval with Confidence Calculation
+# ✅ Guardrail for Irrelevant Queries
+def is_financial_query(query):
+    financial_keywords = [
+        "revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", "cash flow", "net income"
+    ]
+    return any(keyword in query.lower() for keyword in financial_keywords)
+
+# ✅ Multi-Stage Retrieval with Enhanced Guardrails and Confidence Calculation
 def multi_stage_retrieval(query):
+    if not is_financial_query(query):
+        return "Irrelevant Query Detected.", [], 0
+
     # Stage 1: BM25 Search
     bm25_scores = bm25.get_scores(bm25_tokenizer(query))
     top_bm25_indices = np.argsort(bm25_scores)[::-1][:5]
@@ -59,7 +69,7 @@ def multi_stage_retrieval(query):
 
     financial_values = extract_financial_values(top_result)
 
-    if financial_values:
+    if financial_values and confidence_score >= 30:
         return top_result, financial_values, confidence_score
     else:
         return "No valid financial data found.", [], 0
