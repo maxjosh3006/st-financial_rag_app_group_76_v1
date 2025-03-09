@@ -52,7 +52,7 @@ index.add(np.array(doc_embeddings))
 
 # ✅ Enhanced Financial Value Extraction with Regex
 def extract_financial_values(text):
-    pattern = r'\b(?:cash flow|operating activities|investing activities|financing activities|net profit)\b.*?([\d,]+)'
+    pattern = r'\b(?:cash flow|operating activities|investing activities|financing activities|net profit|receivables)\b.*?([\d,]+)'
     matches = re.findall(pattern, text, re.IGNORECASE)
     return matches if matches else ["No valid financial data found"]
 
