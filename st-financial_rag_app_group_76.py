@@ -9,14 +9,14 @@ import re
 # ✅ Load Models
 embed_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-# ✅ Extract Financial Text from PDF with Improved Chunking
+# ✅ Extract Financial Text from PDF with Improved Chunking & Table Extraction
 def extract_financial_text(pdf_path):
     extracted_text = []
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             text = page.extract_text()
             if text:
-                chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets|Profit|Net Income|Earnings)\b)', text)
+                chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets|Profit|Net Income|Earnings|Operating Activities|Cash Flow)\b)', text)
                 extracted_text.extend([" ".join(chunk.split()[:300]) for chunk in chunks])
     return extracted_text
 
@@ -46,16 +46,18 @@ dimension = doc_embeddings.shape[1]
 index = faiss.IndexFlatL2(dimension)
 index.add(np.array(doc_embeddings))
 
-# ✅ Enhanced Financial Value Extraction
+# ✅ Enhanced Financial Value Extraction with Regex
 def extract_financial_values(text):
-    pattern = r'\b(?:\$|€|£)?[\d,.]+(?:\s?(bn|m|million|billion))?\b'
-    return re.findall(pattern, text, re.IGNORECASE)
+    pattern = r'\b(?:cash flow|operating activities|investing activities|financing activities)\b.*?([\d,]+)'
+    matches = re.findall(pattern, text, re.IGNORECASE)
+    return matches if matches else ["No valid financial data found"]
 
 # ✅ Guardrail for Irrelevant Queries
 def is_financial_query(query):
     financial_keywords = [
         "revenue", "profit", "net income", "earnings", "expenses",
-        "assets", "liabilities", "equity", "cash flow", "net profit"
+        "assets", "liabilities", "equity", "cash flow", "net profit",
+        "operating activities", "investing activities", "financing activities"
     ]
     return any(keyword in query.lower() for keyword in financial_keywords)
 
@@ -106,7 +108,8 @@ def main():
         test_queries = [
             "What is BMW's net profit in 2023?",
             "What are the total receivables in 2022?",
-            "What is the capital of France?"
+            "What is the capital of France?",
+            "What is Cash flow from operating activities?"
         ]
 
         for query in test_queries:
