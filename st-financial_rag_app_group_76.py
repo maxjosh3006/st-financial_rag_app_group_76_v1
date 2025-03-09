@@ -1,86 +1,74 @@
 import streamlit as st
+from sentence_transformers import SentenceTransformer, CrossEncoder, util
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer, util
 import faiss
-import re
 import numpy as np
+import re
 
-# Load embedding model
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+# Load Models
+bm25_tokenizer = lambda text: text.lower().split()
+bm25_corpus = []  # Preprocess and populate with your financial data
+bm25 = BM25Okapi([bm25_tokenizer(doc) for doc in bm25_corpus])
 
-# Sample financial data (replace with real data extraction logic)
-documents = [
-    "Total Revenue in 2023 was $10M.",
-    "Net Profit Margin improved by 15% in Q4 2023.",
-    "Operating Expenses decreased by 8% in H1 2023.",
-]
-doc_embeddings = embedding_model.encode(documents, convert_to_tensor=True)
+embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 
-# FAISS setup
-dimension = doc_embeddings.shape[1]
+# FAISS Index
+dimension = embedding_model.get_sentence_embedding_dimension()
 index = faiss.IndexFlatL2(dimension)
-index.add(doc_embeddings.numpy())
+doc_embeddings = embedding_model.encode(bm25_corpus, convert_to_tensor=True)
+index.add(np.array(doc_embeddings))
 
-# BM25 setup
-tokenized_docs = [doc.split() for doc in documents]
-bm25 = BM25Okapi(tokenized_docs)
+# Guardrail Functions
+def validate_input(query):
+    if not re.match(r"^[a-zA-Z0-9 ?!.,']+$", query):
+        return "Invalid query. Please enter a valid financial question."
+    return query
 
-# Guardrail - Input Validation
-def validate_query(query):
-    banned_keywords = ["attack", "hack", "leak"]
-    if any(word in query.lower() for word in banned_keywords):
-        return False
-    return True
-
-# Guardrail - Output Filtering
 def filter_output(response):
-    safe_patterns = [r'\$\d+', r'\d+%']  # Match financial values
-    if any(re.search(pattern, response) for pattern in safe_patterns):
-        return response
-    return "Response filtered for quality assurance."
+    if "France" in response:  # Example filter for irrelevant content
+        return "This question is irrelevant to financial data."
+    return response
 
-# Search Logic
-def search_documents(query):
-    if not validate_query(query):
-        return "Invalid query detected. Please ask relevant financial questions."
+# Multi-Stage Retrieval Pipeline
+def multi_stage_retrieval(query):
+    query_validated = validate_input(query)
+    if "Invalid" in query_validated:
+        return query_validated
 
-    # BM25 Search
-    tokenized_query = query.split()
-    bm25_scores = bm25.get_scores(tokenized_query)
+    # Stage 1: BM25 Search
+    bm25_scores = bm25.get_scores(bm25_tokenizer(query))
+    top_bm25_indices = np.argsort(bm25_scores)[::-1][:10]
 
-    # FAISS Search
-    query_embedding = embedding_model.encode([query], convert_to_tensor=True)
-    faiss_scores, faiss_indices = index.search(query_embedding.numpy(), k=3)
+    # Stage 2: Embedding Search
+    query_embedding = embedding_model.encode(query, convert_to_tensor=True)
+    _, top_faiss_indices = index.search(query_embedding.unsqueeze(0).numpy(), 10)
 
-    # Combine results
-    combined_results = list(zip(documents, bm25_scores))
-    sorted_results = sorted(combined_results, key=lambda x: x[1], reverse=True)
+    # Combine Results
+    combined_results = set(top_bm25_indices) | set(top_faiss_indices[0])
+    candidate_docs = [bm25_corpus[idx] for idx in combined_results]
 
-    # Select top result
-    best_result = sorted_results[0][0] if sorted_results[0][1] > 0 else "No relevant information found."
+    # Stage 3: Cross-Encoder Re-ranking
+    ranked_docs = sorted(candidate_docs, key=lambda doc: cross_encoder.predict((query, doc)), reverse=True)
 
-    # Output filter
-    return filter_output(best_result)
+    return ranked_docs[0] if ranked_docs else "No relevant content found."
 
-# Streamlit UI
-st.title("Financial Data Extraction RAG Model")
-query = st.text_input("Ask a financial question:")
+# Streamlit UI Development
+st.title("Financial Data Retrieval System")
+user_query = st.text_input("Enter your financial query:")
+if user_query:
+    result = multi_stage_retrieval(user_query)
+    filtered_response = filter_output(result)
+    st.write("**Answer:**", filtered_response)
 
-if st.button("Submit"):
-    if query.strip():
-        result = search_documents(query)
-        st.write("**Answer:**", result)
-        st.write("**Confidence Score:**", np.round(np.max(bm25.get_scores(query.split())) / 10, 2))
-    else:
-        st.warning("Please enter a valid query.")
-
-# Testing Section
-st.header("Testing & Validation")
-test_questions = [
-    "What was the total revenue in 2023?",  # High-confidence
-    "Did the net profit margin change in Q3 2023?",  # Low-confidence
-    "What is the capital of France?"  # Irrelevant question
+# Testing
+test_queries = [
+    "What is BMW's net profit in 2023?",
+    "Summarize BMW's cash flow statement trends.",
+    "What is the capital of France?"
 ]
-for q in test_questions:
-    st.subheader(f"Test Question: {q}")
-    st.write("**Answer:**", search_documents(q))
+
+st.sidebar.title("Test Cases")
+for query in test_queries:
+    st.sidebar.write(f"**Query:** {query}")
+    st.sidebar.write(f"**Answer:** {multi_stage_retrieval(query)}")
