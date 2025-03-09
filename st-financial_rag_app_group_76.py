@@ -83,27 +83,29 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
 def extract_financial_value(tables, query):
     possible_headers = [
         " ".join(str(cell) for cell in row if cell).strip()
-    for table in tables
-    for row in table
-    if any(cell for cell in row)  # Filters out empty rows
+        for table in tables
+        for row in table
+        if any(cell for cell in row)  # Filters out empty rows
     ]
-    for table in tables:
-        for row in table:
-            row_text = " ".join(str(cell) for cell in row if cell)
-            possible_headers.append(row_text)
-    extraction_result = process.extractOne(query, possible_headers, score_cutoff=70)
+
+    # Flexible Search with Lower Threshold for Partial Matches
+    extraction_result = process.extractOne(query, possible_headers, score_cutoff=60)
 
     if extraction_result:
         best_match, score = extraction_result
     else:
         return ["No valid financial data found"], 0
 
+    # Enhanced Matching Logic - Look for Financial Data in Neighboring Cells
     for table in tables:
-       for row in table:
+        for row in table:
             row_text = " ".join(str(cell) for cell in row if cell)
             if best_match in row_text:
-                # Enhanced Regex for Handling Various Number Formats
-                numbers = [cell for cell in row if re.match(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", str(cell))]
+                # Improved Regex for Varied Formats
+                numbers = [
+                    cell for cell in row 
+                    if re.match(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", str(cell))
+                ]
                 if len(numbers) >= 2:
                     return numbers[:2], round(score, 2)
 
@@ -136,22 +138,10 @@ scaler = MinMaxScaler(feature_range=(0, 100))
 
 def calculate_confidence(retrieval_confidence, table_confidence):
     """
-    Combines retrieval and table extraction confidence, ensuring the final score is capped at 100%.
+    Combines retrieval and table extraction confidence with weighted scaling.
     """
-    # Rescale confidence values and ensure they are meaningful
-    normalized_retrieval_conf = min(max(retrieval_confidence, 0), 100)
-    normalized_table_conf = min(max(table_confidence, 0), 100)
-    
-    # Final Confidence Score (Capped at 100%)
-    final_confidence = round((normalized_retrieval_conf + normalized_table_conf) / 2, 2)
-    return final_confidence
-
-def calculate_confidence(retrieval_confidence, table_confidence):
-    """
-    Combines retrieval and table extraction confidence, ensuring the final score is capped at 100%.
-    """
-    # Combine scores and cap at 100%
-    final_confidence = min((retrieval_confidence + table_confidence) / 2, 100)
+    # Assign higher weight to table confidence for financial data
+    final_confidence = min((retrieval_confidence * 0.4) + (table_confidence * 0.6), 100)
 
     return round(final_confidence, 2)
 
