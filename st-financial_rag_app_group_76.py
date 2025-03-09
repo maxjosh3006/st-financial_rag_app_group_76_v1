@@ -14,14 +14,24 @@ def load_pdf(pdf_path):
         text = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
     return text
 
+# ✅ Enhanced Table Extraction with Improved Parsing
 def extract_tables_from_pdf(pdf_path):
     extracted_tables = []
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
-            tables = page.extract_tables()
+            tables = page.extract_tables(
+                vertical_strategy='lines',   # Improved boundary detection
+                horizontal_strategy='text', # Better text alignment for rows
+                snap_tolerance=5             # Helps with misaligned data
+            )
             for table in tables:
-                extracted_tables.append(table)
+                clean_table = [
+                    [cell.strip() if cell else '' for cell in row]  # Clean empty cells
+                    for row in table
+                ]
+                extracted_tables.append(clean_table)
     return extracted_tables
+
 
 def chunk_text(text, chunk_size=300):
     words = text.split()
@@ -80,16 +90,17 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
     return [text_chunks[i] for i in top_chunks], final_confidence
 
 # ✅ Improved Financial Data Extraction with Flexible Matching
+# ✅ Enhanced Financial Data Extraction with Neighbor Search
 def extract_financial_value(tables, query):
-    # Clean headers for better matching
+    # Search across both headers and row text
     possible_headers = [
-        " ".join(str(cell) for cell in row if cell).strip().lower()
+        " ".join(str(cell).strip().lower() for cell in row if cell)
         for table in tables
         for row in table
         if any(cell for cell in row)  # Filters out empty rows
     ]
 
-    # Flexible Search with Lower Threshold for Partial Matches
+    # Flexible Search for Partial Matches
     extraction_result = process.extractOne(query.lower(), possible_headers, score_cutoff=60)
 
     if extraction_result:
@@ -97,14 +108,14 @@ def extract_financial_value(tables, query):
     else:
         return ["No valid financial data found"], 0
 
-    # Enhanced Logic: Row-Based Search for Values in Adjacent Cells
+    # Enhanced Logic: Search for Values in Adjacent Cells
     for table in tables:
         for row in table:
-            row_text = " ".join(str(cell) for cell in row if cell).strip().lower()
+            row_text = " ".join(str(cell).strip().lower() for cell in row if cell)
             if best_match in row_text:
-                # Improved Regex for Varied Number Formats
+                # Improved Regex for Financial Data Patterns
                 numbers = [
-                    cell for cell in row 
+                    cell for cell in row
                     if re.match(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", str(cell))
                 ]
                 if len(numbers) >= 2:
