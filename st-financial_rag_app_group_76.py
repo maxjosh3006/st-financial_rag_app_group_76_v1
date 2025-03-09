@@ -139,14 +139,14 @@ scaler = MinMaxScaler(feature_range=(0, 100))
 
 def calculate_confidence(retrieval_confidence, table_confidence):
    
-     if table_confidence > 70:
+    if table_confidence > 70:
         return round((retrieval_confidence * 0.3) + (table_confidence * 0.7), 2)
     elif table_confidence > 40:
         return round((retrieval_confidence * 0.5) + (table_confidence * 0.5), 2)
     else:
         return round((retrieval_confidence * 0.7) + (table_confidence * 0.3), 2)
 
-    return round(final_confidence, 2)
+  
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
