@@ -1,88 +1,94 @@
 import streamlit as st
-from sentence_transformers import SentenceTransformer, CrossEncoder, util
+import pdfplumber
+from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
 import faiss
 import numpy as np
 import re
-import pdfplumber
 
+# ✅ Load Models
+embed_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-
-
+# ✅ Extract Financial Text from PDF with Improved Chunking
 def extract_financial_text(pdf_path):
     extracted_text = []
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             text = page.extract_text()
             if text:
-                extracted_text.append(text.strip())
+                chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets)\b)', text)
+                extracted_text.extend(chunks)
     return extracted_text
 
-# Load PDF Data
+# ✅ Data Loading
 pdf_path = "BMW_Finance_NV_Annual_Report_2023.pdf"
 bm25_corpus = extract_financial_text(pdf_path)
+
+# ✅ BM25 Setup with Improved Tokenization
 bm25_tokenizer = lambda text: text.lower().split()
 bm25 = BM25Okapi([bm25_tokenizer(doc) for doc in bm25_corpus])
 
-embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
-
-# FAISS Index
-dimension = embedding_model.get_sentence_embedding_dimension()
+# ✅ Embedding and FAISS Setup
+doc_embeddings = embed_model.encode(bm25_corpus, convert_to_tensor=True)
+dimension = doc_embeddings.shape[1]
 index = faiss.IndexFlatL2(dimension)
-doc_embeddings = embedding_model.encode(bm25_corpus, convert_to_tensor=True)
 index.add(np.array(doc_embeddings))
 
-# Guardrail Functions
-def validate_input(query):
-    if not re.match(r"^[a-zA-Z0-9 ?!.,']+$", query):
-        return "Invalid query. Please enter a valid financial question."
-    return query
+# ✅ Enhanced Financial Value Extraction
+def extract_financial_values(text):
+    pattern = r'\b(?:\$|€|£)?[\d,.]+(?:\s?(bn|m|million|billion))?\b'
+    return re.findall(pattern, text, re.IGNORECASE)
 
-def filter_output(response):
-    if "France" in response:  # Example filter for irrelevant content
-        return "This question is irrelevant to financial data."
-    return response
-
-# Multi-Stage Retrieval Pipeline
+# ✅ Multi-Stage Retrieval with Confidence Calculation
 def multi_stage_retrieval(query):
-    query_validated = validate_input(query)
-    if "Invalid" in query_validated:
-        return query_validated
-
     # Stage 1: BM25 Search
     bm25_scores = bm25.get_scores(bm25_tokenizer(query))
-    top_bm25_indices = np.argsort(bm25_scores)[::-1][:10]
+    top_bm25_indices = np.argsort(bm25_scores)[::-1][:5]
 
-    # Stage 2: Embedding Search
-    query_embedding = embedding_model.encode(query, convert_to_tensor=True)
-    _, top_faiss_indices = index.search(query_embedding.unsqueeze(0).numpy(), 10)
+    # Stage 2: FAISS Search
+    query_embedding = embed_model.encode(query, convert_to_tensor=True)
+    _, top_faiss_indices = index.search(query_embedding.unsqueeze(0).numpy(), 5)
 
-    # Combine Results
+    # Combine Results with Weighted Confidence Score
     combined_results = set(top_bm25_indices) | set(top_faiss_indices[0])
     candidate_docs = [bm25_corpus[idx] for idx in combined_results]
 
-    # Stage 3: Cross-Encoder Re-ranking
-    ranked_docs = sorted(candidate_docs, key=lambda doc: cross_encoder.predict((query, doc)), reverse=True)
+    # Precision Scoring Logic
+    top_result = max(candidate_docs, key=lambda doc: bm25_scores[bm25_corpus.index(doc)])
+    confidence_score = round(max(bm25_scores) / 10, 2)
 
-    return ranked_docs[0] if ranked_docs else "No relevant content found."
+    financial_values = extract_financial_values(top_result)
 
-# Streamlit UI Development
-st.title("Financial Data Retrieval System")
-user_query = st.text_input("Enter your financial query:")
-if user_query:
-    result = multi_stage_retrieval(user_query)
-    filtered_response = filter_output(result)
-    st.write("**Answer:**", filtered_response)
+    if financial_values:
+        return top_result, financial_values, confidence_score
+    else:
+        return "No valid financial data found.", [], 0
 
-# Testing
-test_queries = [
-    "What is BMW's net profit in 2023?",
-    "Summarize BMW's cash flow statement trends.",
-    "What is the capital of France?"
-]
+# ✅ Streamlit UI
+def main():
+    st.title("Financial Insights RAG System")
+    st.write("Ask any financial-related question based on available reports.")
 
-st.sidebar.title("Test Cases")
-for query in test_queries:
-    st.sidebar.write(f"**Query:** {query}")
-    st.sidebar.write(f"**Answer:** {multi_stage_retrieval(query)}")
+    query = st.text_input("Enter your financial question:")
+
+    if st.button("Submit"):
+        result, financial_values, score = multi_stage_retrieval(query)
+        st.write(f"**Answer:** {result}")
+        if financial_values:
+            st.info(f"**Extracted Data:** {', '.join(financial_values)}")
+        st.write(f"**Confidence Score:** {score:.2f}")
+
+# ✅ Testing Framework
+def test_cases():
+    test_queries = [
+        "What is BMW's net profit in 2023?",
+        "What are the total receivables in 2022?",
+        "What is the capital of France?"
+    ]
+
+    for query in test_queries:
+        result, financial_values, score = multi_stage_retrieval(query)
+        print(f"Query: {query}\nAnswer: {result}\nConfidence Score: {score:.2f}\n")
+
+if __name__ == "__main__":
+    main()
