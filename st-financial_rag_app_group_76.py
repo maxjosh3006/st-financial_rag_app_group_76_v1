@@ -17,12 +17,24 @@ def extract_financial_text(pdf_path):
             text = page.extract_text()
             if text:
                 chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets|Profit|Net Income|Earnings)\b)', text)
-                extracted_text.extend(chunks)
+                extracted_text.extend([" ".join(chunk.split()[:300]) for chunk in chunks])
     return extracted_text
+
+# ✅ Improved Table Extraction for Financial Values
+def extract_tables_from_pdf(pdf_path):
+    extracted_data = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            tables = page.extract_tables()
+            for table in tables:
+                for row in table:
+                    row_text = " ".join(str(cell) for cell in row if cell)
+                    extracted_data.append(row_text.strip())
+    return extracted_data
 
 # ✅ Data Loading
 pdf_path = "BMW_Finance_NV_Annual_Report_2023.pdf"
-bm25_corpus = extract_financial_text(pdf_path)
+bm25_corpus = extract_financial_text(pdf_path) + extract_tables_from_pdf(pdf_path)
 
 # ✅ BM25 Setup with Improved Tokenization
 bm25_tokenizer = lambda text: text.lower().split()
@@ -70,7 +82,7 @@ def multi_stage_retrieval(query):
 
     financial_values = extract_financial_values(top_result)
 
-    if financial_values and confidence_score >= 30:
+    if financial_values and confidence_score >= 20:
         return top_result, financial_values, confidence_score
     else:
         return "No valid financial data found.", [], 0
@@ -92,8 +104,8 @@ def main():
     # ✅ Testing Framework with Button for Results
     if st.button("Run Test Cases"):
         test_queries = [
-            "What is net income?",
-            "What is profit?",
+            "What is BMW's net profit in 2023?",
+            "What are the total receivables in 2022?",
             "What is the capital of France?"
         ]
 
