@@ -16,7 +16,7 @@ def extract_financial_text(pdf_path):
         for page in pdf.pages:
             text = page.extract_text()
             if text:
-                chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets|Liabilities|Cash Flow|income|loss)\b)', text)
+                chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets|Liabilities|Net income|loss)\b)', text)
                 extracted_text.extend(chunks)
     return extracted_text
 
@@ -91,8 +91,8 @@ def main():
     # ✅ Testing Framework with Button for Results
     if st.button("Run Test Cases"):
         test_queries = [
-            "What is Income/(loss) before taxation?",
-            "What is Interest and interest related income?",
+            "What is net income?",
+            "What is profit?",
             "What is the capital of France?"
         ]
 
