@@ -78,17 +78,21 @@ def main():
             st.info(f"**Extracted Data:** {', '.join(financial_values)}")
         st.write(f"**Confidence Score:** {score:.2f}")
 
-# ✅ Testing Framework
-def test_cases():
-    test_queries = [
-        "What is BMW's net profit in 2023?",
-        "What are the total receivables in 2022?",
-        "What is the capital of France?"
-    ]
+    # ✅ Testing Framework with Button for Results
+    if st.button("Run Test Cases"):
+        test_queries = [
+            "What is BMW's net profit in 2023?",
+            "What are the total receivables in 2022?",
+            "What is the capital of France?"
+        ]
 
-    for query in test_queries:
-        result, financial_values, score = multi_stage_retrieval(query)
-        print(f"Query: {query}\nAnswer: {result}\nConfidence Score: {score:.2f}\n")
+        for query in test_queries:
+            result, financial_values, score = multi_stage_retrieval(query)
+            st.write(f"**Query:** {query}")
+            st.write(f"**Answer:** {result}")
+            if financial_values:
+                st.info(f"**Extracted Data:** {', '.join(financial_values)}")
+            st.write(f"**Confidence Score:** {score:.2f}")
 
 if __name__ == "__main__":
     main()
