@@ -170,6 +170,7 @@ if query:
         retrieved_chunks, retrieval_confidence = multistage_retrieve(query)
         retrieved_text = "\n".join(retrieved_chunks)
         financial_values, table_confidence = extract_financial_value(tables, query)
+        print (financial_values)
 
          # Improved Confidence Calculation
         final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
