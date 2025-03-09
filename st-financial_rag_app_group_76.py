@@ -20,13 +20,16 @@ def extract_tables_from_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             tables = page.extract_tables(
-                vertical_strategy='lines',   # Improved boundary detection
-                horizontal_strategy='text', # Better text alignment for rows
-                snap_tolerance=5             # Helps with misaligned data
+                table_settings={
+                    "vertical_strategy": "lines",
+                    "horizontal_strategy": "text",
+                    "snap_tolerance": 5,
+                    "intersection_tolerance": 3
+                }
             )
             for table in tables:
                 clean_table = [
-                    [cell.strip() if cell else '' for cell in row]  # Clean empty cells
+                    [cell.strip() if cell else '' for cell in row]
                     for row in table
                 ]
                 extracted_tables.append(clean_table)
