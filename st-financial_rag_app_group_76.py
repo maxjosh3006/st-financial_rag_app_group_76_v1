@@ -138,7 +138,7 @@ keyword_embeddings = classification_model.encode(relevant_keywords)
 scaler = MinMaxScaler(feature_range=(0, 100))
 
 def calculate_confidence(retrieval_confidence, table_confidence):
-    """
+   
      if table_confidence > 70:
         return round((retrieval_confidence * 0.3) + (table_confidence * 0.7), 2)
     elif table_confidence > 40:
