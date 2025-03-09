@@ -16,7 +16,7 @@ def extract_financial_text(pdf_path):
         for page in pdf.pages:
             text = page.extract_text()
             if text:
-                chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets|Liabilities|Net income|loss)\b)', text)
+                chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets|Profit|Net Income|Earnings)\b)', text)
                 extracted_text.extend(chunks)
     return extracted_text
 
@@ -41,9 +41,10 @@ def extract_financial_values(text):
 
 # ✅ Guardrail for Irrelevant Queries
 def is_financial_query(query):
-    financial_keywords = [
-        "revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", "cash flow", "net income", "income" ,"loss"
-    ]
+   financial_keywords = [
+    "revenue", "profit", "net income", "earnings", "expenses", 
+    "assets", "liabilities", "equity", "cash flow", "net profit"
+]
     return any(keyword in query.lower() for keyword in financial_keywords)
 
 # ✅ Multi-Stage Retrieval with Enhanced Guardrails and Confidence Calculation
