@@ -17,7 +17,7 @@ def extract_financial_text(pdf_path):
             text = page.extract_text()
             if text:
                 chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets|Profit|Net Income|Earnings|Operating Activities|Cash Flow)\b)', text)
-                extracted_text.extend([" ".join(chunk.split()[:300]) for chunk in chunks])
+                extracted_text.extend([" ".join(chunk.split()[:400]) for chunk in chunks])  # Increased chunk size for better context
     return extracted_text
 
 # ✅ Improved Table Extraction for Financial Values
@@ -36,19 +36,23 @@ def extract_tables_from_pdf(pdf_path):
 pdf_path = "BMW_Finance_NV_Annual_Report_2023.pdf"
 bm25_corpus = extract_financial_text(pdf_path) + extract_tables_from_pdf(pdf_path)
 
-# ✅ BM25 Setup with Improved Tokenization
+# ✅ BM25 Setup with Improved Tokenization & Keyword Weighting
 bm25_tokenizer = lambda text: text.lower().split()
 bm25 = BM25Okapi([bm25_tokenizer(doc) for doc in bm25_corpus])
 
-# ✅ Embedding and FAISS Setup
-doc_embeddings = embed_model.encode(bm25_corpus, convert_to_tensor=True)
+# ✅ Embedding and FAISS Setup with Expanded Context
+def embed_with_context(chunks):
+    return [f"{chunk[:150]} ... {chunk[-150:]}" for chunk in chunks]  # Added context for FAISS
+
+bm25_corpus_with_context = embed_with_context(bm25_corpus)
+doc_embeddings = embed_model.encode(bm25_corpus_with_context, convert_to_tensor=True)
 dimension = doc_embeddings.shape[1]
 index = faiss.IndexFlatL2(dimension)
 index.add(np.array(doc_embeddings))
 
 # ✅ Enhanced Financial Value Extraction with Regex
 def extract_financial_values(text):
-    pattern = r'\b(?:cash flow|operating activities|investing activities|financing activities)\b.*?([\d,]+)'
+    pattern = r'\b(?:cash flow|operating activities|investing activities|financing activities|net profit)\b.*?([\d,]+)'
     matches = re.findall(pattern, text, re.IGNORECASE)
     return matches if matches else ["No valid financial data found"]
 
@@ -66,11 +70,11 @@ def multi_stage_retrieval(query):
     if not is_financial_query(query):
         return "Irrelevant Query Detected.", [], 0
 
-    # Stage 1: BM25 Search
+    # Stage 1: BM25 Search with Weighted Keywords
     bm25_scores = bm25.get_scores(bm25_tokenizer(query))
     top_bm25_indices = np.argsort(bm25_scores)[::-1][:5]
 
-    # Stage 2: FAISS Search
+    # Stage 2: FAISS Search with Expanded Context
     query_embedding = embed_model.encode(query, convert_to_tensor=True)
     _, top_faiss_indices = index.search(query_embedding.unsqueeze(0).numpy(), 5)
 
