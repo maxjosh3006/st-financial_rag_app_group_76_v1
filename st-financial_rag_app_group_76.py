@@ -91,8 +91,8 @@ def main():
     # ✅ Testing Framework with Button for Results
     if st.button("Run Test Cases"):
         test_queries = [
-            "What is BMW's net profit in 2023?",
-            "What are the total receivables in 2022?",
+            "What is Income/(loss) before taxation?",
+            "What is Interest and interest related income?",
             "What is the capital of France?"
         ]
 
