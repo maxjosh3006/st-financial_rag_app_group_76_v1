@@ -4,10 +4,24 @@ from rank_bm25 import BM25Okapi
 import faiss
 import numpy as np
 import re
+import pdfplumber
 
-# Load Models
+
+
+
+def extract_financial_text(pdf_path):
+    extracted_text = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if text:
+                extracted_text.append(text.strip())
+    return extracted_text
+
+# Load PDF Data
+pdf_path = "BMW_Finance_NV_Annual_Report_2023.pdf"
+bm25_corpus = extract_financial_text(pdf_path)
 bm25_tokenizer = lambda text: text.lower().split()
-bm25_corpus = []  # Preprocess and populate with your financial data
 bm25 = BM25Okapi([bm25_tokenizer(doc) for doc in bm25_corpus])
 
 embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
