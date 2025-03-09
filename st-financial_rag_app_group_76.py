@@ -41,11 +41,11 @@ def extract_financial_values(text):
 
 # ✅ Guardrail for Irrelevant Queries
 def is_financial_query(query):
-   financial_keywords = [
-    "revenue", "profit", "net income", "earnings", "expenses", 
-    "assets", "liabilities", "equity", "cash flow", "net profit"
-]
-     return any(keyword in query.lower() for keyword in financial_keywords)
+    financial_keywords = [
+        "revenue", "profit", "net income", "earnings", "expenses",
+        "assets", "liabilities", "equity", "cash flow", "net profit"
+    ]
+    return any(keyword in query.lower() for keyword in financial_keywords)
 
 # ✅ Multi-Stage Retrieval with Enhanced Guardrails and Confidence Calculation
 def multi_stage_retrieval(query):
