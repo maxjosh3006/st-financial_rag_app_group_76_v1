@@ -17,7 +17,7 @@ def extract_financial_text(pdf_path):
             text = page.extract_text()
             if text:
                 chunks = re.split(r'(?=\b(?:Revenue|Income|Expenses|Receivables|Assets|Profit|Net Income|Earnings|Operating Activities|Cash Flow)\b)', text)
-                extracted_text.extend([" ".join(chunk.split()[:400]) for chunk in chunks])  # Increased chunk size for better context
+                extracted_text.extend([" ".join(chunk.split()[:400]) for chunk in chunks])
     return extracted_text
 
 # ✅ Improved Table Extraction for Financial Values
@@ -88,7 +88,7 @@ def multi_stage_retrieval(query):
 
     financial_values = extract_financial_values(top_result)
 
-    if financial_values and confidence_score >= 20:
+    if financial_values and confidence_score >= 30:
         return top_result, financial_values, confidence_score
     else:
         return "No valid financial data found.", [], 0
