@@ -236,8 +236,3 @@ if st.sidebar.button("Run Test Queries"):
 
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {final_confidence}%")
-
-        # if financial_values and financial_values[0] != "No valid financial data found":
-        #  st.sidebar.write(f"📊 **Extracted Data:** 2023: {financial_values[0]}, 2022: {financial_values[1]}")
-        #else:
-        #    st.sidebar.warning("⚠️ No valid financial data found.")
