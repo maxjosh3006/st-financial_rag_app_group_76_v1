@@ -62,7 +62,7 @@ def main():
         if "irrelevant" in filtered_query:
             st.error(filtered_query)
         else:
-            text_chunks = preprocess_text(open("BMW_Finance_NV_Annual_Report_2023.txt").read())
+            text_chunks = preprocess_text(open("BMW_Finance_NV_Annual_Report_2023.pdf").read())
             embeddings = embed_text(text_chunks)
             index = create_faiss_index(embeddings)
             results = retrieve_results(filtered_query, index, text_chunks)
