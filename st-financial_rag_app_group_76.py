@@ -50,6 +50,7 @@ bm25 = BM25Okapi(tokenized_chunks)
 
 # ✅ Improved Multi-Stage Retrieval with Better Confidence Calculation
 # ✅ Multi-Stage Retrieval with Improved Scoring
+
 def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
     """Multi-Stage Retrieval: Uses BM25 pre-filtering, FAISS search, and re-ranking."""
     query_embedding = embedding_model.encode([query])
@@ -75,7 +76,12 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
 
     # Get Top K Chunks
     top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
-    return [text_chunks[i] for i in top_chunks]
+
+    # Confidence Score Calculation
+    retrieval_confidence = max(final_scores.values()) if final_scores else 0
+
+    return [text_chunks[i] for i in top_chunks], round(retrieval_confidence, 2)
+
 
 # ✅ Step 6: Retrieve Financial Values from Tables
 def extract_financial_value(tables, query):
@@ -190,7 +196,7 @@ if query:
         st.write("**🔍 Confidence Score:** 0%")
     else:
         # Proceed with retrieval if query is relevant
-        retrieved_chunks, retrieval_confidence = multistage_retrieve(query)
+        retrieved_chunks = multistage_retrieve(query)
         retrieved_text = "\n".join(retrieved_chunks)
         financial_values, table_confidence = extract_financial_value(tables, query)
         print (financial_values)
