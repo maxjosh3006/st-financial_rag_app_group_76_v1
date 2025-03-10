@@ -51,13 +51,13 @@ bm25 = BM25Okapi(tokenized_chunks)
 # ✅ Improved Multi-Stage Retrieval with Better Confidence Calculation
 # ✅ Multi-Stage Retrieval with Improved Scoring
 
-def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):  # Increased k and alpha
+def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7): 
     query_embedding = embedding_model.encode([query])
     bm25_scores = bm25.get_scores(query.split())
     top_bm25_indices = np.argsort(bm25_scores)[-bm25_k:]
 
     filtered_embeddings = np.array([chunk_embeddings[i] for i in top_bm25_indices])
-    faiss_index = faiss.IndexFlatIP(filtered_embeddings.shape[1])  # Changed from L2 to IP
+    faiss_index = faiss.IndexFlatIP(filtered_embeddings.shape[1])
     faiss_index.add(filtered_embeddings)
 
     _, faiss_ranks = faiss_index.search(query_embedding, k)
@@ -66,11 +66,15 @@ def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):  # Increased k and al
     final_scores = {}
     for i in set(top_bm25_indices) | set(top_faiss_indices):
         bm25_score = bm25_scores[i] if i in top_bm25_indices else 0
-        faiss_score = np.dot(query_embedding, chunk_embeddings[i])  # Using cosine similarity
+        faiss_score = np.dot(query_embedding, chunk_embeddings[i])
         final_scores[i] = alpha * bm25_score + (1 - alpha) * faiss_score
 
-    top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
-    retrieval_confidence = max(final_scores.values()) if final_scores else 0
+    if final_scores:
+        top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
+        retrieval_confidence = max(final_scores.values())
+    else:
+        top_chunks = []
+        retrieval_confidence = 0  # Ensure a default value
 
     return [text_chunks[i] for i in top_chunks], round(retrieval_confidence, 2)
 
