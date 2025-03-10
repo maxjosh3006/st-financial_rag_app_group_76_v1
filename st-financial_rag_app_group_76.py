@@ -197,7 +197,13 @@ if query:
     else:
         # Proceed with retrieval if query is relevant
         retrieved_chunks = multistage_retrieve(query)
-        retrieved_text = "\n".join(retrieved_chunks)
+        print(f"Type of retrieved_chunks: {type(retrieved_chunks)}")
+        print(f"Content of retrieved_chunks: {retrieved_chunks}")
+        if retrieved_chunks and isinstance(retrieved_chunks, list):
+           retrieved_text = "\n".join(retrieved_chunks)
+        else:
+           retrieved_text = "No relevant data found or retrieval error occurred."
+
         financial_values, table_confidence = extract_financial_value(tables, query)
         print (financial_values)
 
