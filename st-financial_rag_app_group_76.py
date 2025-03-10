@@ -19,26 +19,16 @@ def extract_tables_from_pdf(pdf_path):
     extracted_tables = []
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
-            tables = page.extract_tables(
-                table_settings={
-                    "vertical_strategy": "lines",
-                    "horizontal_strategy": "text",
-                    "snap_tolerance": 5,
-                    "intersection_tolerance": 3
-                }
-            )
+            tables = page.extract_tables()
             for table in tables:
-                clean_table = [
-                    [cell.strip() if cell else '' for cell in row]
-                    for row in table
-                ]
-                extracted_tables.append(clean_table)
+                extracted_tables.append(table)  # Store all tables
     return extracted_tables
 
 
 def chunk_text(text, chunk_size=300):
     words = text.split()
-    return [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size // 2)]
+    return [" ".join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size//2)]
+
 
 # ✅ Load Data
 pdf_path = "BMW_Finance_NV_Annual_Report_2023.pdf"
@@ -47,6 +37,7 @@ tables = extract_tables_from_pdf(pdf_path)
 text_chunks = chunk_text(pdf_text)
 
 # ✅ Embedding Model
+# ✅ Step 4: Set Up Multi-Stage Retrieval (BM25 + FAISS)
 embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 chunk_embeddings = np.array([embedding_model.encode(chunk) for chunk in text_chunks])
 
@@ -60,14 +51,14 @@ bm25 = BM25Okapi(tokenized_chunks)
 # ✅ Improved Multi-Stage Retrieval with Better Confidence Calculation
 # ✅ Multi-Stage Retrieval with Improved Scoring
 def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
+    """Multi-Stage Retrieval: Uses BM25 pre-filtering, FAISS search, and re-ranking."""
     query_embedding = embedding_model.encode([query])
 
     # 🔹 Stage 1: BM25 Keyword Search
     bm25_scores = bm25.get_scores(query.split())
-    max_bm25_score = max(bm25_scores)
     top_bm25_indices = np.argsort(bm25_scores)[-bm25_k:]
 
-    # 🔹 Stage 2: FAISS Vector Search
+    # 🔹 Stage 2: FAISS Vector Search (Only on BM25 Results)
     filtered_embeddings = np.array([chunk_embeddings[i] for i in top_bm25_indices])
     faiss_index = faiss.IndexFlatL2(filtered_embeddings.shape[1])
     faiss_index.add(filtered_embeddings)
@@ -75,22 +66,47 @@ def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
     _, faiss_ranks = faiss_index.search(query_embedding, k)
     top_faiss_indices = [top_bm25_indices[i] for i in faiss_ranks[0]]
 
-    # 🔹 Stage 3: Re-Ranking with Normalization
+    # 🔹 Stage 3: Re-Ranking (BM25 + FAISS Scores)
     final_scores = {}
     for i in set(top_bm25_indices) | set(top_faiss_indices):
         bm25_score = bm25_scores[i] if i in top_bm25_indices else 0
-        faiss_score = -np.linalg.norm(query_embedding - chunk_embeddings[i])
-        final_scores[i] = alpha * (bm25_score / max_bm25_score) + (1 - alpha) * (faiss_score + 1)
+        faiss_score = -np.linalg.norm(query_embedding - chunk_embeddings[i])  # L2 distance
+        final_scores[i] = alpha * bm25_score + (1 - alpha) * faiss_score
 
-    # 🔹 Filter Irrelevant Responses
-    if max_bm25_score < 3.0:
-        return ["Irrelevant question detected."], 0  # Low BM25 = Irrelevant
-
-    # Final Confidence Score
-    final_confidence = round(max(final_scores.values()) * 100, 2)
+    # Get Top K Chunks
     top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
+    return [text_chunks[i] for i in top_chunks]
 
-    return [text_chunks[i] for i in top_chunks], final_confidence
+# ✅ Step 6: Retrieve Financial Values from Tables
+def extract_financial_value(tables, query):
+    """Find financial values for a given query using fuzzy matching."""
+    possible_headers = []
+
+    for table in tables:
+        for row in table:
+            row_text = " ".join(str(cell) for cell in row if cell)  # Convert row to string
+            possible_headers.append(row_text)  # Store all row headers
+
+    # 🔹 Step 1: Find Best-Matching Row for the Query
+    extraction_result = process.extractOne(query, possible_headers, score_cutoff=80)  # Stricter threshold
+
+    if extraction_result:
+        best_match, score = extraction_result
+    else:
+        return ["No valid financial data found"]
+
+    # 🔹 Step 2: Extract Correct Numbers from the Matched Row
+    for table in tables:
+        for row in table:
+            row_text = " ".join(str(cell) for cell in row if cell)
+            if best_match in row_text:
+                numbers = [cell for cell in row if re.match(r"\d{1,3}(?:,\d{3})*(?:\.\d+)?", str(cell))]
+
+                # Ensure we have at least two values (2023 & 2022)
+                if len(numbers) >= 2:
+                    return numbers[:2]  # Return only the correct financial values
+
+    return ["No valid financial data found"]
 
 # ✅ Improved Financial Data Extraction with Flexible Matching
 # ✅ Enhanced Financial Data Extraction with Neighbor Search
@@ -221,7 +237,7 @@ if st.sidebar.button("Run Test Queries"):
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {final_confidence}%")
 
-        if financial_values and financial_values[0] != "No valid financial data found":
-            st.sidebar.write(f"📊 **Extracted Data:** 2023: {financial_values[0]}, 2022: {financial_values[1]}")
-        else:
-            st.sidebar.warning("⚠️ No valid financial data found.")
+        # if financial_values and financial_values[0] != "No valid financial data found":
+        #  st.sidebar.write(f"📊 **Extracted Data:** 2023: {financial_values[0]}, 2022: {financial_values[1]}")
+        #else:
+        #    st.sidebar.warning("⚠️ No valid financial data found.")
