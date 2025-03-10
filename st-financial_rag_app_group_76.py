@@ -141,14 +141,13 @@ keyword_embeddings = classification_model.encode(relevant_keywords)
 
 scaler = MinMaxScaler(feature_range=(0, 100))
 
-def calculate_confidence(retrieval_confidence, table_confidence):
-    min_confidence = 10  # Prevents overly low values
-    if table_confidence > 70:
-        return max(min_confidence, round((retrieval_confidence * 0.3) + (table_confidence * 0.7), 2))
-    elif table_confidence > 40:
-        return max(min_confidence, round((retrieval_confidence * 0.5) + (table_confidence * 0.5), 2))
-    else:
-        return max(min_confidence, round((retrieval_confidence * 0.7) + (table_confidence * 0.3), 2))
+retrieval_confidence = float(retrieval_confidence) if retrieval_confidence else 0.0
+table_confidence = float(table_confidence) if table_confidence else 0.0
+
+def calculate_confidence(retrieval_confidence, table_confidence, weight=0.6):
+    return round((weight * retrieval_confidence) + ((1 - weight) * table_confidence), 2)
+
+final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
