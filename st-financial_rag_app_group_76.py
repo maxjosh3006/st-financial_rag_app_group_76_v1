@@ -51,94 +51,54 @@ bm25 = BM25Okapi(tokenized_chunks)
 # ✅ Improved Multi-Stage Retrieval with Better Confidence Calculation
 # ✅ Multi-Stage Retrieval with Improved Scoring
 
-def multistage_retrieve(query, k=5, bm25_k=10, alpha=0.5):
-    """Multi-Stage Retrieval: Uses BM25 pre-filtering, FAISS search, and re-ranking."""
+def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):  # Increased k and alpha
     query_embedding = embedding_model.encode([query])
-
-    # 🔹 Stage 1: BM25 Keyword Search
     bm25_scores = bm25.get_scores(query.split())
     top_bm25_indices = np.argsort(bm25_scores)[-bm25_k:]
 
-    # 🔹 Stage 2: FAISS Vector Search (Only on BM25 Results)
     filtered_embeddings = np.array([chunk_embeddings[i] for i in top_bm25_indices])
-    faiss_index = faiss.IndexFlatL2(filtered_embeddings.shape[1])
+    faiss_index = faiss.IndexFlatIP(filtered_embeddings.shape[1])  # Changed from L2 to IP
     faiss_index.add(filtered_embeddings)
 
     _, faiss_ranks = faiss_index.search(query_embedding, k)
     top_faiss_indices = [top_bm25_indices[i] for i in faiss_ranks[0]]
 
-    # 🔹 Stage 3: Re-Ranking (BM25 + FAISS Scores)
     final_scores = {}
     for i in set(top_bm25_indices) | set(top_faiss_indices):
         bm25_score = bm25_scores[i] if i in top_bm25_indices else 0
-        faiss_score = -np.linalg.norm(query_embedding - chunk_embeddings[i])  # L2 distance
+        faiss_score = np.dot(query_embedding, chunk_embeddings[i])  # Using cosine similarity
         final_scores[i] = alpha * bm25_score + (1 - alpha) * faiss_score
 
-    # Get Top K Chunks
     top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
-
-    # Confidence Score Calculation
     retrieval_confidence = max(final_scores.values()) if final_scores else 0
 
     return [text_chunks[i] for i in top_chunks], round(retrieval_confidence, 2)
 
 
+
 # ✅ Step 6: Retrieve Financial Values from Tables
-def extract_financial_value(tables, query):
-    """Find financial values for a given query using fuzzy matching."""
-    possible_headers = []
 
-    for table in tables:
-        for row in table:
-            row_text = " ".join(str(cell) for cell in row if cell)  # Convert row to string
-            possible_headers.append(row_text)  # Store all row headers
-
-    # 🔹 Step 1: Find Best-Matching Row for the Query
-    extraction_result = process.extractOne(query, possible_headers, score_cutoff=80)  # Stricter threshold
-
-    if extraction_result:
-        best_match, score = extraction_result
-    else:
-        return ["No valid financial data found"]
-
-    # 🔹 Step 2: Extract Correct Numbers from the Matched Row
-    for table in tables:
-        for row in table:
-            row_text = " ".join(str(cell) for cell in row if cell)
-            if best_match in row_text:
-                numbers = [cell for cell in row if re.match(r"\d{1,3}(?:,\d{3})*(?:\.\d+)?", str(cell))]
-
-                # Ensure we have at least two values (2023 & 2022)
-                if len(numbers) >= 2:
-                    return numbers[:2]  # Return only the correct financial values
-
-    return ["No valid financial data found"]
 
 # ✅ Improved Financial Data Extraction with Flexible Matching
-# ✅ Enhanced Financial Data Extraction with Neighbor Search
 def extract_financial_value(tables, query):
-    # Search across both headers and row text
     possible_headers = [
         " ".join(str(cell).strip().lower() for cell in row if cell)
         for table in tables
         for row in table
-        if any(cell for cell in row)  # Filters out empty rows
+        if any(cell for cell in row)
     ]
 
-    # Flexible Search for Partial Matches
-    extraction_result = process.extractOne(query.lower(), possible_headers, score_cutoff=60)
+    extraction_result = process.extractOne(query.lower(), possible_headers, score_cutoff=50)  # Lowered cutoff
 
     if extraction_result:
         best_match, score = extraction_result
     else:
         return ["No valid financial data found"], 0
 
-    # Enhanced Logic: Search for Values in Adjacent Cells
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell).strip().lower() for cell in row if cell)
             if best_match in row_text:
-                # Improved Regex for Financial Data Patterns
                 numbers = [
                     cell for cell in row
                     if re.match(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", str(cell))
@@ -174,15 +134,13 @@ keyword_embeddings = classification_model.encode(relevant_keywords)
 scaler = MinMaxScaler(feature_range=(0, 100))
 
 def calculate_confidence(retrieval_confidence, table_confidence):
-   
+    min_confidence = 10  # Prevents overly low values
     if table_confidence > 70:
-        return round((retrieval_confidence * 0.3) + (table_confidence * 0.7), 2)
+        return max(min_confidence, round((retrieval_confidence * 0.3) + (table_confidence * 0.7), 2))
     elif table_confidence > 40:
-        return round((retrieval_confidence * 0.5) + (table_confidence * 0.5), 2)
+        return max(min_confidence, round((retrieval_confidence * 0.5) + (table_confidence * 0.5), 2))
     else:
-        return round((retrieval_confidence * 0.7) + (table_confidence * 0.3), 2)
-
-  
+        return max(min_confidence, round((retrieval_confidence * 0.7) + (table_confidence * 0.3), 2))
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
