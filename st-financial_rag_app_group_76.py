@@ -62,13 +62,36 @@ def main():
         if "irrelevant" in filtered_query:
             st.error(filtered_query)
         else:
-            text_chunks = preprocess_text(open("BMW_Finance_NV_Annual_Report_2023.pdf").read())
+            text_chunks = preprocess_text(open("BMW_Finance_NV_Annual_Report_2023.txt").read())
             embeddings = embed_text(text_chunks)
             index = create_faiss_index(embeddings)
             results = retrieve_results(filtered_query, index, text_chunks)
             st.write("### Results")
             for result in results:
                 st.markdown(f"> {result}")
+
+            # Explanation for Cash Flow from Operating Activities
+            if "cash flow from operating activities" in user_query.lower():
+                st.write("### What is Cash Flow from Operating Activities?")
+                st.markdown(
+                    "**Cash flow from operating activities** refers to the net cash generated (or used) by a company’s core business operations during a specific period. "
+                    "It reflects the cash inflows and outflows directly related to day-to-day activities such as sales, expenses, and working capital changes."
+                )
+                st.markdown(
+                    "**Key Components:**\n"
+                    "1. **Net Income (Starting Point)**\n"
+                    "2. **Adjustments for Non-Cash Items** (e.g., depreciation, fair value changes)\n"
+                    "3. **Changes in Working Capital** (e.g., receivables, payables)\n"
+                )
+                st.markdown(
+                    "**BMW Finance N.V. 2023 Example:**\n"
+                    "- Net loss for the year: €(394.3) million\n"
+                    "- Fair value losses on derivatives: €(106.8) million\n"
+                    "- Fair value measurement gains on debt securities: €669.8 million\n"
+                    "- Interest received: €1,806.2 million\n"
+                    "- Interest paid: €(1,913.2) million\n"
+                    "\n**Final Cash Flow from Operating Activities:** €952.9 million (positive cash inflow)"
+                )
 
 if __name__ == "__main__":
     main()
