@@ -141,8 +141,19 @@ keyword_embeddings = classification_model.encode(relevant_keywords)
 
 scaler = MinMaxScaler(feature_range=(0, 100))
 
-retrieval_confidence = float(retrieval_confidence) if retrieval_confidence else 0.0
+result = multistage_retrieve(query)
+retrieved_chunks, retrieval_confidence = result if result else ([], 0.0)
+
+try:
+    retrieval_confidence = float(retrieval_confidence)
+except (ValueError, TypeError):
+    retrieval_confidence = 0.0
+    
 table_confidence = float(table_confidence) if table_confidence else 0.0
+try:
+    table_confidence = float(table_confidence)
+except (ValueError, TypeError):
+    table_confidence = 0.0
 
 def calculate_confidence(retrieval_confidence, table_confidence, weight=0.6):
     return round((weight * retrieval_confidence) + ((1 - weight) * table_confidence), 2)
