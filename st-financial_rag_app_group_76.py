@@ -55,6 +55,8 @@ bm25 = BM25Okapi(tokenized_chunks)
 def extract_relevant_sentences(retrieved_chunks, query, max_sentences=3):
     sentences = []
     for chunk in retrieved_chunks:
+        if not chunk:  # 🔹 Skip empty chunks to prevent errors
+            continue
         chunk_sentences = sent_tokenize(chunk)
         for sentence in chunk_sentences:
             if any(word.lower() in sentence.lower() for word in query.split()):
