@@ -177,7 +177,7 @@ if st.sidebar.button("Run Test Queries"):
             continue
 
         retrieved_chunks, retrieval_confidence = multistage_retrieve(test_query)
-         if retrieved_chunks and isinstance(retrieved_chunks, list):
+        if retrieved_chunks and isinstance(retrieved_chunks, list):
             retrieved_text = "\n".join(retrieved_chunks)
         else:
             retrieved_text = "No relevant data found or retrieval error occurred."
