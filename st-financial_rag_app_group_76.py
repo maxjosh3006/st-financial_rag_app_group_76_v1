@@ -68,6 +68,7 @@ def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):
     query_embedding = embedding_model.encode([query])
     bm25_scores = bm25.get_scores(query.split())
 
+    # Normalize BM25 Scores
     bm25_scores = np.array(bm25_scores)
     if len(bm25_scores) > 0:
         bm25_scores = (bm25_scores - bm25_scores.min()) / (bm25_scores.max() - bm25_scores.min() + 1e-9) * 100
@@ -90,18 +91,16 @@ def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):
     if final_scores:
         top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
         retrieval_confidence = float(max(final_scores.values()))
-        if np.isnan(retrieval_confidence):
-            retrieval_confidence = 0.0
     else:
         top_chunks = []
-        retrieval_confidence = 0.0
+        retrieval_confidence = 0.0  # Default confidence
 
     valid_chunks = [i for i in top_chunks if i < len(text_chunks)]
-    retrieved_chunks = [text_chunks[i] for i in valid_chunks]
-    
-    # Extract relevant sentences
-    precise_context = extract_relevant_sentences(retrieved_chunks, query)
-    
+    retrieved_chunks = [text_chunks[i] for i in valid_chunks] if valid_chunks else []
+
+    # Ensure we always return a valid string
+    precise_context = extract_relevant_sentences(retrieved_chunks, query) if retrieved_chunks else "No relevant data found."
+
     return precise_context, round(retrieval_confidence, 2)
 
 # ✅ Query Classification
@@ -133,7 +132,11 @@ if query:
         st.warning("❌ This appears to be an irrelevant question.")
         st.write("**🔍 Confidence Score:** 0%")
     else:
-        retrieved_text, retrieval_confidence = multistage_retrieve(query)
+        if test_query.strip():
+           retrieved_text, retrieval_confidence = multistage_retrieve(test_query)
+        else:
+           retrieved_text, retrieval_confidence = "No query provided.", 0.0
+
         final_confidence = calculate_confidence(retrieval_confidence)
 
         st.write(f"### 🔍 Confidence Score: {final_confidence}%")
