@@ -13,6 +13,7 @@ try:
 except LookupError:
     nltk.download("punkt")
 from nltk.tokenize import sent_tokenize
+print("NLTK and Punkt are ready!")
 
 
 # ✅ Load PDF
