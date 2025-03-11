@@ -166,7 +166,7 @@ if query:
         table_confidence = float(table_confidence) if table_confidence else 0.0
 
         #final_confidence = round((0.6 * retrieval_confidence) + (0.4 * table_confidence), 2)
-         final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
+        final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
         st.write("### ✅ Retrieved Context")
         st.success(retrieved_text)
         st.write(f"### 🔍 Final Confidence Score: {final_confidence}%")
