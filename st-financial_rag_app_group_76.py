@@ -173,13 +173,23 @@ if st.sidebar.button("Run Test Queries"):
         if query_type == "irrelevant":
             st.sidebar.write(f"**🔹 Query:** {test_query} (❌ Irrelevant)")
             st.sidebar.write("**🔍 Confidence Score:** 0%")
+            st.sidebar.write("⚠️ No relevant financial data available.")
             continue
 
         retrieved_chunks, retrieval_confidence = multistage_retrieve(test_query)
-        retrieved_text = "\n".join(retrieved_chunks) if retrieved_chunks else "No relevant data found."
+         if retrieved_chunks and isinstance(retrieved_chunks, list):
+            retrieved_text = "\n".join(retrieved_chunks)
+        else:
+            retrieved_text = "No relevant data found or retrieval error occurred."
+             # 🔹 Extract financial values from tables
         financial_values, table_confidence = extract_financial_value(tables, test_query)
-
+             # 🔹 Calculate final confidence
         final_confidence = round((0.6 * retrieval_confidence) + (0.4 * table_confidence), 2)
-
+             # 🔹 Display results
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {final_confidence}%")
+        if retrieved_text.strip():
+            st.sidebar.write("### ✅ Retrieved Context")
+            st.sidebar.success(retrieved_text)
+        else:
+            st.sidebar.warning("⚠️ No relevant financial context retrieved.")
