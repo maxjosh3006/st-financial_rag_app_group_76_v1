@@ -14,11 +14,6 @@ nltk.download('punkt_tab')  # This line is missing in your original code
 
 from nltk.tokenize import sent_tokenize
 
-#text = "Hello! How are you? I'm fine. It's a beautiful day."
-sentences = sent_tokenize(text)
-
-print(sentences)
-
 # ✅ Load PDF
 def load_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
