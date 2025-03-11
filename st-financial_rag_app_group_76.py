@@ -66,6 +66,9 @@ def extract_relevant_sentences(retrieved_chunks, query, max_sentences=3):
 
 # ✅ Multi-Stage Retrieval
 def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7): 
+    if not query or not query.strip():  # 🔹 Ensure query is not empty
+        return "No query provided.", 0.0
+
     query_embedding = embedding_model.encode([query])
     bm25_scores = bm25.get_scores(query.split())
 
@@ -99,11 +102,10 @@ def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):
     valid_chunks = [i for i in top_chunks if i < len(text_chunks)]
     retrieved_chunks = [text_chunks[i] for i in valid_chunks] if valid_chunks else []
 
-    # Ensure we always return a valid string
-    precise_context = extract_relevant_sentences(retrieved_chunks, query) if retrieved_chunks else "No relevant data found."
+    # ✅ Ensure query is valid before calling extract_relevant_sentences()
+    precise_context = extract_relevant_sentences(retrieved_chunks, query) if retrieved_chunks and query else "No relevant data found."
 
     return precise_context, round(retrieval_confidence, 2)
-
 # ✅ Query Classification
 classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 relevant_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
