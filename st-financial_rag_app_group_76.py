@@ -79,29 +79,39 @@ def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):
 
 # ✅ Improved Financial Data Extraction with Confidence Scaling
 def extract_financial_value(tables, query):
-    possible_headers = [
-        " ".join(str(cell).strip().lower() for cell in row if cell)
-        for table in tables
-        for row in table
-        if any(cell for cell in row)
-    ]
+    possible_headers = []
+    extracted_values = []
 
+    for table in tables:
+        for row in table:
+            row_text = " ".join(str(cell).strip().lower() for cell in row if cell)
+            possible_headers.append(row_text)
+
+    # 🔹 Find the best header match
     extraction_result = process.extractOne(query.lower(), possible_headers, score_cutoff=50)
-
+    
     if extraction_result:
         best_match, score = extraction_result
     else:
         return ["No valid financial data found"], 0
 
+    # 🔹 Extract numeric values from the matched row
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell).strip().lower() for cell in row if cell)
             if best_match in row_text:
                 numbers = [cell for cell in row if re.match(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", str(cell))]
-                if len(numbers) >= 2:
-                    return numbers[:2], max(0, min(100, score))  # Ensure confidence is 0-100
+                if numbers:
+                    extracted_values.extend(numbers)
+    
+    # 🔹 Return at least 2 years of data if available
+    if len(extracted_values) >= 2:
+        return extracted_values[:2], max(0, min(100, score))  # Normalize confidence to 0-100
+    elif extracted_values:
+        return [extracted_values[0], "N/A"], max(0, min(100, score))  # One value found, return "N/A" for second year
 
     return ["No valid financial data found"], 0
+
 
 # ✅ Query Classification for Irrelevant Queries
 classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
@@ -141,11 +151,11 @@ if query:
         st.success(retrieved_text)
         st.write(f"### 🔍 Final Confidence Score: {final_confidence}%")
 
-        if financial_values and financial_values[0] != "No valid financial data found":
-            st.write("### 📊 Extracted Financial Data")
-            st.info(f"**2023:** {financial_values[0]}, **2022:** {financial_values[1]}")
-        else:
-            st.warning("⚠️ No valid financial data found. Try rephrasing your query.")
+        #if financial_values and financial_values[0] != "No valid financial data found":
+            #st.write("### 📊 Extracted Financial Data")
+            #st.info(f"**2023:** {financial_values[0]}, **2022:** {financial_values[1]}")
+        #else:
+            #st.warning("⚠️ No valid financial data found. Try rephrasing your query.")
 
 # ✅ Testing & Validation
 if st.sidebar.button("Run Test Queries"):
