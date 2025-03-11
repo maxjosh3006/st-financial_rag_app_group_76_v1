@@ -133,7 +133,7 @@ if query:
         st.write("**🔍 Confidence Score:** 0%")
     else:
         if query.strip():
-           retrieved_text, retrieval_confidence = multistage_retrieve(test_query)
+           retrieved_text, retrieval_confidence = multistage_retrieve(query)
         else:
            retrieved_text, retrieval_confidence = "No query provided.", 0.0
 
