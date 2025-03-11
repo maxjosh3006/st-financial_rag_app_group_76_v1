@@ -153,8 +153,10 @@ try:
 except (ValueError, TypeError):
     table_confidence = 0.0  # Default to 0 if invalid
 
-final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
+retrieval_confidence = retrieval_confidence if 'retrieval_confidence' in locals() else 0.0
+table_confidence = table_confidence if 'table_confidence' in locals() else 0.0
 
+final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
