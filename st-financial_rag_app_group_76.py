@@ -8,9 +8,12 @@ from sentence_transformers import SentenceTransformer, util
 from thefuzz import process
 from sklearn.preprocessing import MinMaxScaler
 import nltk
-nltk.download("punkt")
-nltk.data.find("tokenizers/punkt")
-from nltk.tokenize import sent_tokenize, word_tokenize
+try:
+    nltk.data.find("tokenizers/punkt")
+except LookupError:
+    nltk.download("punkt")
+from nltk.tokenize import sent_tokenize
+
 
 # ✅ Load PDF
 def load_pdf(pdf_path):
