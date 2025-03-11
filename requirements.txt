@@ -8,3 +8,5 @@ thefuzz
 transformers
 pypdf
 nltk
+sent_tokenize
+PunktTokenizer
