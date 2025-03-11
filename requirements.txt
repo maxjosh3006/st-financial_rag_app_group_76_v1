@@ -8,3 +8,4 @@ thefuzz
 transformers
 pypdf
 nltk
+scikit-learn
