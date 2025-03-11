@@ -195,7 +195,7 @@ if query:
         #final_confidence = round((0.6 * retrieval_confidence) + (0.4 * table_confidence), 2)
         final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
         st.write("### ✅ Retrieved Context")
-        st.success(retrieved_text)
+        #st.success(retrieved_text)
         st.write(f"### 🔍 Final Confidence Score: {final_confidence}%")
 
         #if financial_values and financial_values[0] != "No valid financial data found":
