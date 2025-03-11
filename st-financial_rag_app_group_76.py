@@ -132,7 +132,7 @@ if query:
         st.warning("❌ This appears to be an irrelevant question.")
         st.write("**🔍 Confidence Score:** 0%")
     else:
-        if test_query.strip():
+        if query.strip():
            retrieved_text, retrieval_confidence = multistage_retrieve(test_query)
         else:
            retrieved_text, retrieval_confidence = "No query provided.", 0.0
