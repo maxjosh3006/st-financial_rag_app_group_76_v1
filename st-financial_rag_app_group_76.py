@@ -8,13 +8,15 @@ from sentence_transformers import SentenceTransformer, util
 from thefuzz import process
 from sklearn.preprocessing import MinMaxScaler
 import nltk
+
+# ✅ Ensure `punkt` tokenizer is installed before using `sent_tokenize()`
 try:
     nltk.data.find("tokenizers/punkt")
 except LookupError:
     nltk.download("punkt")
-from nltk.tokenize import sent_tokenize
-print("NLTK and Punkt are ready!")
 
+from nltk.tokenize import sent_tokenize
+print("✅ NLTK and Punkt tokenizer are ready!")
 
 # ✅ Load PDF
 def load_pdf(pdf_path):
@@ -60,13 +62,13 @@ bm25 = BM25Okapi(tokenized_chunks)
 def extract_relevant_sentences(retrieved_chunks, query, max_sentences=3):
     sentences = []
     for chunk in retrieved_chunks:
-        if not chunk:  # 🔹 Skip empty chunks to prevent errors
+        if not chunk or not chunk.strip():  # 🔹 Skip empty chunks
             continue
-        chunk_sentences = sent_tokenize(chunk)
+        chunk_sentences = sent_tokenize(chunk)  # ✅ Fixed `sent_tokenize()` issue
         for sentence in chunk_sentences:
             if any(word.lower() in sentence.lower() for word in query.split()):
                 sentences.append(sentence)
-    return " ".join(sentences[:max_sentences]) if sentences else "No precise data found."
+    return " ".join(sentences[:max_sentences]) if sentences else "No relevant data found."
 
 # ✅ Multi-Stage Retrieval
 def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7): 
@@ -110,6 +112,7 @@ def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):
     precise_context = extract_relevant_sentences(retrieved_chunks, query) if retrieved_chunks and query else "No relevant data found."
 
     return precise_context, round(retrieval_confidence, 2)
+
 # ✅ Query Classification
 classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 relevant_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
@@ -139,11 +142,7 @@ if query:
         st.warning("❌ This appears to be an irrelevant question.")
         st.write("**🔍 Confidence Score:** 0%")
     else:
-        if test_query.strip():
-           retrieved_text, retrieval_confidence = multistage_retrieve(test_query)
-        else:
-           retrieved_text, retrieval_confidence = "No query provided.", 0.0
-
+        retrieved_text, retrieval_confidence = multistage_retrieve(query)  # 🔹 Fixed `test_query` issue
         final_confidence = calculate_confidence(retrieval_confidence)
 
         st.write(f"### 🔍 Confidence Score: {final_confidence}%")
@@ -153,32 +152,3 @@ if query:
         else:  # Low confidence
             st.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
 
-# ✅ Testing & Validation
-if st.sidebar.button("Run Test Queries"):
-    st.sidebar.header("🔍 Testing & Validation")
-
-    test_queries = [
-        "Total Receivables from BMW Group companies",
-        "Net Income",
-        "What is the capital of France?"
-    ]
-
-    for test_query in test_queries:
-        query_type = classify_query(test_query)
-
-        if query_type == "irrelevant":
-            st.sidebar.write(f"**🔹 Query:** {test_query} (❌ Irrelevant)")
-            st.sidebar.write("**🔍 Confidence Score:** 0%")
-            st.sidebar.write("⚠️ No relevant financial data available.")
-            continue
-
-        retrieved_text, retrieval_confidence = multistage_retrieve(test_query)
-        final_confidence = calculate_confidence(retrieval_confidence)
-
-        st.sidebar.write(f"**🔹 Query:** {test_query}")
-        st.sidebar.write(f"**🔍 Confidence Score:** {final_confidence}%")
-
-        if final_confidence >= 50:
-            st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
-        else:
-            st.sidebar.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
