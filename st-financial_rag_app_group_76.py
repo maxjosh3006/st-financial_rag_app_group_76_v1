@@ -52,6 +52,12 @@ bm25 = BM25Okapi(tokenized_chunks)
 def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7): 
     query_embedding = embedding_model.encode([query])
     bm25_scores = bm25.get_scores(query.split())
+    
+    # Normalize BM25 Scores
+    bm25_scores = np.array(bm25_scores)
+    if len(bm25_scores) > 0:
+        bm25_scores = (bm25_scores - bm25_scores.min()) / (bm25_scores.max() - bm25_scores.min() + 1e-9) * 100
+
     top_bm25_indices = np.argsort(bm25_scores)[-bm25_k:]
 
     filtered_embeddings = np.array([chunk_embeddings[i] for i in top_bm25_indices])
@@ -69,46 +75,45 @@ def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):
 
     if final_scores:
         top_chunks = sorted(final_scores, key=final_scores.get, reverse=True)[:k]
-        retrieval_confidence = max(final_scores.values())  # Ensure float value
+        retrieval_confidence = float(max(final_scores.values()))  # Ensure float value
+        if np.isnan(retrieval_confidence):
+            retrieval_confidence = 0.0
     else:
         top_chunks = []
         retrieval_confidence = 0.0
 
-    retrieval_confidence = max(0, min(100, retrieval_confidence * 100))  # Normalize to 0-100
-    return [text_chunks[i] for i in top_chunks], round(retrieval_confidence, 2)
+    valid_chunks = [i for i in top_chunks if i < len(text_chunks)]
+    return [text_chunks[i] for i in valid_chunks], round(retrieval_confidence, 2)
+
 
 # ✅ Improved Financial Data Extraction with Confidence Scaling
+
 def extract_financial_value(tables, query):
-    possible_headers = []
-    extracted_values = []
+    possible_headers = [
+        " ".join(str(cell).strip().lower() for cell in row if cell)
+        for table in tables
+        for row in table
+        if any(cell for cell in row)
+    ]
 
-    for table in tables:
-        for row in table:
-            row_text = " ".join(str(cell).strip().lower() for cell in row if cell)
-            possible_headers.append(row_text)
-
-    # 🔹 Find the best header match
     extraction_result = process.extractOne(query.lower(), possible_headers, score_cutoff=50)
-    
+
     if extraction_result:
         best_match, score = extraction_result
     else:
         return ["No valid financial data found"], 0
 
-    # 🔹 Extract numeric values from the matched row
+    extracted_numbers = []
     for table in tables:
         for row in table:
             row_text = " ".join(str(cell).strip().lower() for cell in row if cell)
             if best_match in row_text:
                 numbers = [cell for cell in row if re.match(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", str(cell))]
-                if numbers:
-                    extracted_values.extend(numbers)
-    
-    # 🔹 Return at least 2 years of data if available
-    if len(extracted_values) >= 2:
-        return extracted_values[:2], max(0, min(100, score))  # Normalize confidence to 0-100
-    elif extracted_values:
-        return [extracted_values[0], "N/A"], max(0, min(100, score))  # One value found, return "N/A" for second year
+                extracted_numbers.extend(numbers)
+
+    if len(extracted_numbers) >= 2:
+        extracted_confidence = round(score * (len(extracted_numbers) / 5), 2)  # Adjust scaling
+        return extracted_numbers[:2], extracted_confidence
 
     return ["No valid financial data found"], 0
 
@@ -125,6 +130,21 @@ def classify_query(query, threshold=0.4):
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
     return "relevant" if max(similarity_scores) >= threshold else "irrelevant"
+
+from sklearn.preprocessing import MinMaxScaler
+import numpy as np
+
+scaler = MinMaxScaler(feature_range=(0, 100))
+
+def calculate_confidence(retrieval_confidence, table_confidence, weight=0.6):
+    confidence_values = np.array([[retrieval_confidence, table_confidence]])
+    scaled_confidences = scaler.fit_transform(confidence_values)
+    
+    retrieval_scaled = scaled_confidences[0, 0]
+    table_scaled = scaled_confidences[0, 1]
+
+    final_score = (weight * retrieval_scaled) + ((1 - weight) * table_scaled)
+    return round(final_score, 2)
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
@@ -145,8 +165,8 @@ if query:
         retrieval_confidence = float(retrieval_confidence) if retrieval_confidence else 0.0
         table_confidence = float(table_confidence) if table_confidence else 0.0
 
-        final_confidence = round((0.6 * retrieval_confidence) + (0.4 * table_confidence), 2)
-
+        #final_confidence = round((0.6 * retrieval_confidence) + (0.4 * table_confidence), 2)
+         final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
         st.write("### ✅ Retrieved Context")
         st.success(retrieved_text)
         st.write(f"### 🔍 Final Confidence Score: {final_confidence}%")
