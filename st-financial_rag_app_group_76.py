@@ -140,7 +140,7 @@ def classify_query(query, threshold=0.4):  # Lowered threshold for flexible matc
 keyword_embeddings = classification_model.encode(relevant_keywords)
 
 scaler = MinMaxScaler(feature_range=(0, 100))
-
+query = st.text_input("Enter your financial question:")
 result = multistage_retrieve(query)
 print(f"DEBUG: multistage_retrieve() Result - {result}")
 
