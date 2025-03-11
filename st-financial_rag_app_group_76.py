@@ -8,8 +8,8 @@ from sentence_transformers import SentenceTransformer, util
 from thefuzz import process
 from sklearn.preprocessing import MinMaxScaler
 import nltk
-#nltk.download('punkt')
-from nltk.tokenize import sent_tokenize
+nltk.download('punkt')
+from nltk.tokenize import sent_tokenize, word_tokenize
 
 # ✅ Load PDF
 def load_pdf(pdf_path):
