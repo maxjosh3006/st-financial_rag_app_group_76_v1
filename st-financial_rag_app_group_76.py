@@ -157,7 +157,16 @@ except (ValueError, TypeError):
 def calculate_confidence(retrieval_confidence, table_confidence, weight=0.6):
     return round((weight * retrieval_confidence) + ((1 - weight) * table_confidence), 2)
 
+financial_values, table_confidence = extract_financial_value(tables, query)
+
+# Ensure table_confidence is a valid number
+try:
+    table_confidence = float(table_confidence)
+except (ValueError, TypeError):
+    table_confidence = 0.0  # Default to 0 if invalid
+
 final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
+
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
