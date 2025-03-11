@@ -140,19 +140,7 @@ def classify_query(query, threshold=0.4):  # Lowered threshold for flexible matc
 keyword_embeddings = classification_model.encode(relevant_keywords)
 
 scaler = MinMaxScaler(feature_range=(0, 100))
-query = st.text_input("Enter your financial question:")
-result = multistage_retrieve(query)
-print(f"DEBUG: multistage_retrieve() Result - {result}")
-
-if result and len(result) == 2:
-    retrieved_chunks, retrieval_confidence = result
-else:
-    retrieved_chunks, retrieval_confidence = [], 0.0
-
-try:
-    retrieval_confidence = float(retrieval_confidence)
-except (ValueError, TypeError):
-    retrieval_confidence = 0.0
+query = st.text_input("Enter your financial question:", key="financial_query")
 
 def calculate_confidence(retrieval_confidence, table_confidence, weight=0.6):
     return round((weight * retrieval_confidence) + ((1 - weight) * table_confidence), 2)
@@ -170,8 +158,19 @@ final_confidence = calculate_confidence(retrieval_confidence, table_confidence)
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
-query = st.text_input("Enter your financial question:")
+#query = st.text_input("Enter your financial question:")
+result = multistage_retrieve(query)
+print(f"DEBUG: multistage_retrieve() Result - {result}")
 
+if result and len(result) == 2:
+    retrieved_chunks, retrieval_confidence = result
+else:
+    retrieved_chunks, retrieval_confidence = [], 0.0
+
+try:
+    retrieval_confidence = float(retrieval_confidence)
+except (ValueError, TypeError):
+    retrieval_confidence = 0.0
 if query:
     query_type = classify_query(query)  # 🔹 Classify the query first
 
