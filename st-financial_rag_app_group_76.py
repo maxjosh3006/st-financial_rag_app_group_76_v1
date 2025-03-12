@@ -149,12 +149,6 @@ def classify_query(query, threshold=0.3):  # 🔹 Lowered threshold to catch mor
 
 # This code implements a basic hallucination detection mechanism with implementation of an output-side guardrail
 
-def detect_hallucinations(query, generated_answer, retrieved_context):
-    # ... (Logic to compare numbers and entities in the answer and context) ...
-    if hallucinated:
-        return f"⚠️ Potential Hallucination Detected! Unverified Data: {', '.join(hallucinated)}"
-    return generated_answer
-
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
 query = st.text_input("Enter your financial question:", key="financial_query")
