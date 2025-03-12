@@ -10,10 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 import nltk
 
 # ✅ Ensure NLTK's Punkt tokenizer is available
-try:
-    nltk.data.find("tokenizers/punkt")
-except LookupError:
-    nltk.download("punkt")
+nltk.download('punkt')
 
 from nltk.tokenize import sent_tokenize
 
@@ -156,8 +153,8 @@ if st.sidebar.button("Run Test Queries"):
     st.sidebar.header("🔍 Testing & Validation")
 
     test_queries = [
-        ("What is the total amount of liabilities due to BMW Group companies as of December 31, 2023?", "High Confidence"),
-        ("What were the main factors contributing to the net loss of BMW Finance N.V. in 2023?", "Low Confidence"),
+        ("What is the Trade receivables from BMW Group companies? Provide precise respone within max 3 sentences", "High Confidence"),
+        ("How did changes in interest rates impact BMW Finance N.V.'s profitability in 2023?Provide precise respone within max 3 sentences", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
@@ -174,7 +171,7 @@ if st.sidebar.button("Run Test Queries"):
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {retrieval_confidence}%")
 
-        if retrieval_confidence >= 50:
+        if retrieval_confidence >= 70:
             st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
         else:
             st.sidebar.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
