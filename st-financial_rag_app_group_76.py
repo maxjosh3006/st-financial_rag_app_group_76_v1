@@ -10,9 +10,8 @@ from sklearn.preprocessing import MinMaxScaler
 import nltk
 
 # ✅ Ensure NLTK's Punkt tokenizer is available
-from nltk.tokenize import PunktSentenceTokenizer
-from nltk.data import load
-tokenizer = load('tokenizers/punkt/english.pickle', paths=['/home/appuser/nltk_data'])
+nltk.download('punkt', download_dir='/home/appuser/nltk_data')
+nltk.data.path.append('/home/appuser/nltk_data')
 
 from nltk.tokenize import sent_tokenize
 
