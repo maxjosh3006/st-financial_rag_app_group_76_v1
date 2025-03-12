@@ -10,7 +10,10 @@ from sklearn.preprocessing import MinMaxScaler
 import nltk
 
 # ✅ Ensure NLTK's Punkt tokenizer is available
-nltk.download('punkt')
+try:
+    nltk.data.find("tokenizers/punkt")
+except LookupError:
+    nltk.download("punkt")
 
 from nltk.tokenize import sent_tokenize
 
@@ -153,8 +156,8 @@ if st.sidebar.button("Run Test Queries"):
     st.sidebar.header("🔍 Testing & Validation")
 
     test_queries = [
-        ("What is the total assets during year 2023. Provide crisp within 3 sentence answers?", "High Confidence"),
-        ("How did changes in interest rates impact BMW Finance N.V.'s profitability in 2023.Provide crisp within 3 sentence answers?", "Low Confidence"),
+        ("What is the total amount of liabilities due to BMW Group companies as of December 31, 2023?", "High Confidence"),
+        ("What were the main factors contributing to the net loss of BMW Finance N.V. in 2023?", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
