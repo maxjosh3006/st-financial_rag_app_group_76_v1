@@ -1,3 +1,19 @@
+# ✅ The code builds a financial question-answering system that can extract information from the BMW Finance N.V. Annual Report 2023 PDF.
+   # Data Preparation: It loads the PDF, extracts tables, and breaks the text into smaller chunks for efficient searching.
+   # Indexing: It creates two search indexes:
+   # BM25: For keyword-based search.
+   # FAISS: For semantic search using text embeddings (numerical representations of text meaning).
+   # Retrieval: It uses a multi-stage retrieval process:
+   # Finds potentially relevant chunks using BM25.
+   # Refines the search using FAISS to find semantically similar chunks.
+   # Re-ranks the results based on combined BM25 and FAISS scores.
+   # Extracts the most relevant sentences from the top chunks.
+   # Query Classification: It determines if a user's query is relevant to financial information by comparing it to predefined financial keywords.
+   # User Interface: It uses Streamlit to create an interactive web application where users can enter their questions and view the results.
+   # Testing and Validation: It includes a section to run predefined test queries to assess the system's accuracy and performance.
+# ✅ the code aims to provide accurate answers to financial questions by combining keyword and semantic search techniques, while also attempting to detect and flag potentially fabricated information.
+
+# ✅  Importing Libraries
 import streamlit as st
 import pdfplumber
 import faiss
@@ -124,10 +140,20 @@ relevant_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabi
 
 keyword_embeddings = classification_model.encode(relevant_keywords)
 
+# Input-Side Guardrail:code has an input-side guardrail in the form of query classification.
+
 def classify_query(query, threshold=0.3):  # 🔹 Lowered threshold to catch more financial queries
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
     return "relevant" if max(similarity_scores) >= threshold else "irrelevant"
+
+# This code implements a basic hallucination detection mechanism with implementation of an output-side guardrail
+
+def detect_hallucinations(query, generated_answer, retrieved_context):
+    # ... (Logic to compare numbers and entities in the answer and context) ...
+    if hallucinated:
+        return f"⚠️ Potential Hallucination Detected! Unverified Data: {', '.join(hallucinated)}"
+    return generated_answer
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
