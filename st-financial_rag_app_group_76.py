@@ -67,13 +67,22 @@ def extract_relevant_sentences(retrieved_chunks, query, max_sentences=3):
             if re.search(r"\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?", sentence) or any(word.lower() in sentence.lower() for word in query.split()):
                 sentences.append(sentence)
 
-    # ✅ If no clear financial data found, return the best text chunk instead
-    if not sentences and retrieved_chunks:
-        return retrieved_chunks[0]
-
     return " ".join(sentences[:max_sentences]) if sentences else "No relevant data found."
 
-# ✅ Multi-Stage Retrieval with Context Filtering
+# ✅ Hallucination Filtering (Output-Side)
+def filter_hallucinations(response, query, confidence_threshold=50):
+    """
+    Filters hallucinated or misleading responses.
+    - If confidence is low and response lacks financial terms, flag it.
+    """
+    financial_keywords = ["revenue", "profit", "income", "assets", "liabilities", "equity", "expenses", "financial", "cash flow"]
+    
+    if confidence_threshold < 50 and not any(word in response.lower() for word in financial_keywords):
+        return "⚠️ The retrieved answer may not be reliable. Please verify with official financial statements."
+    
+    return response
+
+# ✅ Multi-Stage Retrieval with Context Filtering & Hallucination Handling
 def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7): 
     if not query or not query.strip():
         return "No query provided.", 0.0
@@ -113,60 +122,36 @@ def multistage_retrieve(query, k=5, bm25_k=20, alpha=0.7):
 
     # ✅ Apply refined sentence extraction for better precision
     precise_context = extract_relevant_sentences(retrieved_chunks, query)
+    
+    # ✅ Apply hallucination filter
+    final_response = filter_hallucinations(precise_context, query, retrieval_confidence)
 
-    return precise_context, round(retrieval_confidence, 2)
-
-# ✅ Query Classification Fix (Better Threshold)
-classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-relevant_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
-                     "earnings", "financial performance", "cash flow", "balance sheet", "receivables", 
-                     "accounts receivable", "trade receivables", "total receivables"]
-
-keyword_embeddings = classification_model.encode(relevant_keywords)
-
-def classify_query(query, threshold=0.3):  # 🔹 Lowered threshold to catch more financial queries
-    query_embedding = classification_model.encode(query)
-    similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
-    return "relevant" if max(similarity_scores) >= threshold else "irrelevant"
+    return final_response, round(retrieval_confidence, 2)
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
 query = st.text_input("Enter your financial question:", key="financial_query")
 
 if query:
-    query_type = classify_query(query)
+    retrieved_text, retrieval_confidence = multistage_retrieve(query)
+    st.write(f"### 🔍 Confidence Score: {retrieval_confidence}%")
 
-    if query_type == "irrelevant":
-        st.warning("❌ This appears to be an irrelevant question.")
-        st.write("**🔍 Confidence Score:** 0%")
-    else:
-        retrieved_text, retrieval_confidence = multistage_retrieve(query)
-        st.write(f"### 🔍 Confidence Score: {retrieval_confidence}%")
-
-        if retrieval_confidence >= 50:  # High confidence
-            st.success(f"**✅ Relevant Information:**\n\n {retrieved_text}")
-        else:  # Low confidence
-            st.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
+    if retrieval_confidence >= 50:  # High confidence
+        st.success(f"**✅ Relevant Information:**\n\n {retrieved_text}")
+    else:  # Low confidence
+        st.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
 
 # ✅ Testing & Validation
 if st.sidebar.button("Run Test Queries"):
     st.sidebar.header("🔍 Testing & Validation")
 
     test_queries = [
-        ("What is the Trade receivables from BMW Group companies? Provide precise respone within max 3 sentences", "High Confidence"),
-        ("How did changes in interest rates impact BMW Finance N.V.'s profitability in 2023?Provide precise respone within max 3 sentences", "Low Confidence"),
+        ("What is the Trade receivables from BMW Group companies? Provide precise response within max 3 sentences", "High Confidence"),
+        ("How did changes in interest rates impact BMW Finance N.V.'s profitability in 2023? Provide precise response within max 3 sentences", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
     for test_query, confidence_level in test_queries:
-        query_type = classify_query(test_query)
-
-        if query_type == "irrelevant":
-            st.sidebar.write(f"**🔹 Query:** {test_query} (❌ Irrelevant)")
-            st.sidebar.write("**🔍 Confidence Score:** 0%")
-            st.sidebar.write("⚠️ No relevant financial data available.")
-            continue
-
         retrieved_text, retrieval_confidence = multistage_retrieve(test_query)
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {retrieval_confidence}%")
