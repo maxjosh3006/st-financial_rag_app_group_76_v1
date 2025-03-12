@@ -9,3 +9,4 @@ transformers
 pypdf
 nltk
 scikit-learn
+PunktSentenceTokenizer
