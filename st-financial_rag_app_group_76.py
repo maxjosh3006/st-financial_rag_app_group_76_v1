@@ -147,3 +147,31 @@ if query:
             st.success(f"**✅ Relevant Information:**\n\n {retrieved_text}")
         else:  # Low confidence
             st.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
+
+# ✅ Testing & Validation
+if st.sidebar.button("Run Test Queries"):
+    st.sidebar.header("🔍 Testing & Validation")
+
+    test_queries = [
+        ("What is the total amount of liabilities due to BMW Group companies as of December 31, 2023?", "High Confidence"),
+        ("What are the financial reporting rules?", "Low Confidence"),
+        ("What is the capital of France?", "Irrelevant")
+    ]
+
+    for test_query, confidence_level in test_queries:
+        query_type = classify_query(test_query)
+
+        if query_type == "irrelevant":
+            st.sidebar.write(f"**🔹 Query:** {test_query} (❌ Irrelevant)")
+            st.sidebar.write("**🔍 Confidence Score:** 0%")
+            st.sidebar.write("⚠️ No relevant financial data available.")
+            continue
+
+        retrieved_text, retrieval_confidence = multistage_retrieve(test_query)
+        st.sidebar.write(f"**🔹 Query:** {test_query}")
+        st.sidebar.write(f"**🔍 Confidence Score:** {retrieval_confidence}%")
+
+        if retrieval_confidence >= 50:
+            st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
+        else:
+            st.sidebar.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
