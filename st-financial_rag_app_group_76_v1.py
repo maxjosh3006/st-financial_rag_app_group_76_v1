@@ -114,7 +114,7 @@ def filter_hallucinations(response, query, confidence_threshold=30):
     
 
 # ✅ Multi-Stage Retrieval with Context Filtering , Hallucination Handling & Prompting
-def multistage_retrieve(query, k=10, bm25_k=100, alpha=0.8): 
+def multistage_retrieve(query, k=3, bm25_k=100, alpha=0.8): 
     if not query or not query.strip():
         return "No query provided.", 0.0
 
@@ -192,7 +192,7 @@ if st.sidebar.button("Run Test Queries"):
 
     test_queries = [
         ("What is the Trade receivables from BMW Group companies for year 2023?", "High Confidence"),
-        ("What are risks associated with the expected development of the Company?", "Low Confidence"),
+        ("What were the main factors contributing to the net loss of BMW Finance N.V.?", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
