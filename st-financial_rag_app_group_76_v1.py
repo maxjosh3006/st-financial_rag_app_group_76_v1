@@ -58,7 +58,7 @@ tokenized_chunks = [chunk.split() for chunk in text_chunks]
 bm25 = BM25Okapi(tokenized_chunks)
 
 # ✅ Improved Context Extraction (More Precise)
-def extract_relevant_sentences(retrieved_chunks, query, max_sentences=3):
+def extract_relevant_sentences(retrieved_chunks, query, max_sentences=5):
     sentences = []
     for chunk in retrieved_chunks:
         if not chunk or not chunk.strip():  # 🔹 Skip empty chunks
@@ -90,7 +90,7 @@ def classify_query(query, threshold=0.6):  # 🔹 Lowered threshold to catch mor
     return "relevant" if max(similarity_scores) >= threshold else "irrelevant"
 
 # ✅ Hallucination Filtering (Output-Side)
-def filter_hallucinations(response, query, confidence_threshold=50):
+def filter_hallucinations(response, query, confidence_threshold=30):
     """
     Filters hallucinated or misleading responses.
     - If confidence is low and response lacks financial terms, flag it.
@@ -106,7 +106,7 @@ def filter_hallucinations(response, query, confidence_threshold=50):
     
 
 # ✅ Multi-Stage Retrieval with Context Filtering , Hallucination Handling & Prompting
-def multistage_retrieve(query, k=3, bm25_k=20, alpha=0.7): 
+def multistage_retrieve(query, k=5, bm25_k=50, alpha=0.8): 
     if not query or not query.strip():
         return "No query provided.", 0.0
 
