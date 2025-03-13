@@ -89,10 +89,10 @@ def classify_query(query, threshold=0.5):
 
     if similarity_scores and max(similarity_scores) >= threshold:
         return "relevant"
-
+    
     # Fuzzy matching as a fallback
     best_match, score = process.extractOne(query, relevant_keywords)
-    if score > 70:  # Adjust score threshold as needed
+    if score > 75:  # Adjust score threshold as needed
         return "relevant"
 
     return "irrelevant"
