@@ -92,7 +92,7 @@ def classify_query(query, threshold=0.5):
 
     # Fuzzy matching as a fallback
     best_match, score = process.extractOne(query, relevant_keywords)
-    if score > 60:  # Adjust score threshold as needed
+    if score > 70:  # Adjust score threshold as needed
         return "relevant"
 
     return "irrelevant"
@@ -114,7 +114,7 @@ def filter_hallucinations(response, query, confidence_threshold=30):
     
 
 # ✅ Multi-Stage Retrieval with Context Filtering , Hallucination Handling & Prompting
-def multistage_retrieve(query, k=10, bm25_k=100, alpha=0.8): 
+def multistage_retrieve(query, k=5, bm25_k=50, alpha=0.8): 
     if not query or not query.strip():
         return "No query provided.", 0.0
 
