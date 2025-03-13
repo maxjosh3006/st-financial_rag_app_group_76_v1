@@ -180,11 +180,11 @@ if query:
     else:
         retrieved_text, retrieval_confidence = multistage_retrieve(query)
         st.write(f"### 🔍 Confidence Score: {retrieval_confidence}%")
-        st.success(retrieved_text)
-        if retrieval_confidence >= 80:  # High confidence
-            st.success(f"**✅ High Confidence**Relevant Context:*\n\n {retrieved_text}")
+        #st.success(retrieved_text)
+        if retrieval_confidence >= 70:  # High confidence
+            st.success(f"✅ High Confidence**\n Relevant Context:**\n\n {retrieved_text}")
         else:  # Low confidence
-            st.warning(f"⚠️ Low Confidence**Relevant Context:**\n\n {retrieved_text}")
+            st.warning(f"⚠️ Low Confidence**\n Relevant Context:** \n\n {retrieved_text}")
 
 # ✅ Testing & Validation
 if st.sidebar.button("Run Test Queries"):
@@ -208,8 +208,9 @@ if st.sidebar.button("Run Test Queries"):
         retrieved_text, retrieval_confidence = multistage_retrieve(test_query)
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {retrieval_confidence}%")
-        st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
-        if retrieval_confidence >= 80:
-            st.sidebar.success(f"✅ High Confidence**Relevant Context:**\n\n {retrieved_text}")
+        #st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
+        if retrieval_confidence >= 70:
+            st.sidebar.success(f"✅ High Confidence**\n Relevant Context:**\n\n {retrieved_text}")
         else:
-            st.sidebar.warning(f"⚠️ Low Confidence**Relevant Context:**\n\n {retrieved_text}")
+            st.sidebar.warning(f"⚠️ Low Confidence**\n Relevant Context:** \n\n {retrieved_text}")
+ 
