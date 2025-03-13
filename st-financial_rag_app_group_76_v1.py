@@ -101,12 +101,16 @@ def filter_hallucinations(response, query, confidence_threshold=50):
     return response
     
 
-# ✅ Multi-Stage Retrieval with Context Filtering & Hallucination Handling
+# ✅ Multi-Stage Retrieval with Context Filtering , Hallucination Handling & Prompting
 def multistage_retrieve(query, k=3, bm25_k=20, alpha=0.7): 
     if not query or not query.strip():
         return "No query provided.", 0.0
 
     query_embedding = embedding_model.encode([query])
+     # ✅ Formulate query prompt
+
+    query_prompt = f"Provide a precise, structured, and numerical answer for the following financial query. Only include relevant financial figures and explanations within a maximum of 3 sentences.\nQuery: {query}"
+    query_embedding = embedding_model.encode([query_prompt])
     bm25_scores = bm25.get_scores(query.split())
 
     # Normalize BM25 Scores
@@ -171,12 +175,12 @@ if st.sidebar.button("Run Test Queries"):
     st.sidebar.header("🔍 Testing & Validation")
 
     test_queries = [
-        ("What is the Trade receivables from BMW Group companies? Provide a precise structured and numerical answer for the following financial query Only include relevant financial figures and explanations within a maximum of 3 sentences", "High Confidence"),
-        ("What were the main factors contributing to the net loss of BMW Finance N.V. in 2023?Provide a precise structured and numerical answer for the following financial query Only include relevant financial figures and explanations within a maximum of 3 sentences", "Low Confidence"),
+        ("What is the Trade receivables from BMW Group companies?", "High Confidence"),
+        ("What were the main factors contributing to the net loss of BMW Finance N.V. in 2023?", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
-    for test_query, confidence_level in test_queries:
+    for test_query in test_queries:
         query_type = classify_query(test_query)
 
         if query_type == "irrelevant":
