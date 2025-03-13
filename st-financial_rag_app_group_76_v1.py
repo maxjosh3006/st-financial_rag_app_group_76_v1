@@ -192,7 +192,7 @@ if st.sidebar.button("Run Test Queries"):
 
     test_queries = [
         ("What is the Trade receivables from BMW Group companies?", "High Confidence"),
-        ("What were the main factors contributing to the net loss of BMW Finance N.V. in 2023?", "Low Confidence"),
+        ("BMW Finance N.V. reported a loss in 2023. What were the key expenses?", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
