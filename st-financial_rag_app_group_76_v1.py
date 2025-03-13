@@ -166,7 +166,7 @@ query = st.text_input("Enter your financial question:", key="financial_query")
 if query:
     query_type = classify_query(query)
 
-    if query_type == "irrelevant":
+    if query_type and query_type == "irrelevant":
         st.warning("❌ This appears to be an irrelevant question.")
         st.write("**🔍 Confidence Score:** 0%")
     else:
