@@ -158,12 +158,12 @@ def multistage_retrieve(query, k=10, bm25_k=100, alpha=0.8):
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
 query = st.text_input("Enter your financial question:", key="financial_query")
-# Apply query prompt formatting
-user_query = f"Provide a precise, structured, and numerical answer for the following financial query. \
-Only include relevant financial figures and explanations within a maximum of 3 sentences. \
-query: {user_query}"
 
 if query:
+    # Apply query prompt formatting
+    user_query = f"Provide a precise, structured, and numerical answer for the following financial query. \
+    Only include relevant financial figures and explanations within a maximum of 3 sentences. \
+    Query: {query}"
     query_type = classify_query(query)
 
     if query_type and query_type == "irrelevant":
