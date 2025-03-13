@@ -163,8 +163,10 @@ if st.sidebar.button("Run Test Queries"):
     st.sidebar.header("🔍 Testing & Validation")
 
     test_queries = [
-        ("What is the Trade receivables from BMW Group companies? Provide precise response within max 3 sentences"?", "High Confidence"),
-        ("What were the main factors contributing to the net loss of BMW Finance N.V. in 2023?", "Low Confidence"),
+        ("What is the Trade receivables from BMW Group companies? Provide a precise, structured, and numerical answer for the following financial query. 
+Only include relevant financial figures and explanations within a maximum of 3 sentences", "High Confidence"),
+        ("What were the main factors contributing to the net loss of BMW Finance N.V. in 2023?Provide a precise, structured, and numerical answer for the following financial query. 
+Only include relevant financial figures and explanations within a maximum of 3 sentences", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
