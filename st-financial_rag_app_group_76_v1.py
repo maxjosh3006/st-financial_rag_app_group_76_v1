@@ -82,7 +82,7 @@ keyword_embeddings = classification_model.encode(relevant_keywords)
     
 from thefuzz import process
 
-def classify_query(query, threshold=0.65):  
+def classify_query(query, threshold=0.45):  
     # First, check with embedding similarity
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
@@ -107,14 +107,14 @@ def filter_hallucinations(response, query, confidence_threshold=30):
                      "earnings", "financial performance", "cash flow", "balance sheet", "receivables", 
                      "accounts receivable", "Trade receivables", "Total receivables", "net loss"]
     
-    if confidence_threshold < 30 and not any(word in response.lower() for word in financial_keywords):
+    if confidence_threshold < 50 and not any(word in response.lower() for word in financial_keywords):
         return "⚠️ The retrieved answer may not be reliable. Please verify with official financial statements."
     
     return response
     
 
 # ✅ Multi-Stage Retrieval with Context Filtering , Hallucination Handling & Prompting
-def multistage_retrieve(query, k=3, bm25_k=100, alpha=0.7): 
+def multistage_retrieve(query, k=3, bm25_k=200, alpha=0.8): 
     if not query or not query.strip():
         return "No query provided.", 0.0
 
@@ -213,4 +213,3 @@ if st.sidebar.button("Run Test Queries"):
             st.sidebar.success(f"✅ High Confidence\n\n **Relevant Context:**\n\n {retrieved_text}")
         else:
             st.sidebar.warning(f"⚠️ Low Confidence**\n\n **Relevant Context:** \n\n {retrieved_text}")
- 
