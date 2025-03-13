@@ -92,7 +92,7 @@ def classify_query(query, threshold=0.5):
     
     # Fuzzy matching as a fallback
     best_match, score = process.extractOne(query, relevant_keywords)
-    if score > 75:  # Adjust score threshold as needed
+    if score > 70:  # Adjust score threshold as needed
         return "relevant"
 
     return "irrelevant"
@@ -114,7 +114,7 @@ def filter_hallucinations(response, query, confidence_threshold=30):
     
 
 # ✅ Multi-Stage Retrieval with Context Filtering , Hallucination Handling & Prompting
-def multistage_retrieve(query, k=5, bm25_k=50, alpha=0.8): 
+def multistage_retrieve(query, k=3, bm25_k=50, alpha=0.7): 
     if not query or not query.strip():
         return "No query provided.", 0.0
 
@@ -181,10 +181,10 @@ if query:
         retrieved_text, retrieval_confidence = multistage_retrieve(query)
         st.write(f"### 🔍 Confidence Score: {retrieval_confidence}%")
         st.success(retrieved_text)
-        #if retrieval_confidence >= 80:  # High confidence
-            #st.success(f"**✅ Relevant Information:**\n\n {retrieved_text}")
-        #else:  # Low confidence
-            #st.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
+        if retrieval_confidence >= 80:  # High confidence
+            st.success(f"**✅ High Confidence**Relevant Context:*\n\n {retrieved_text}")
+        else:  # Low confidence
+            st.warning(f"⚠️ Low Confidence**Relevant Context:**\n\n {retrieved_text}")
 
 # ✅ Testing & Validation
 if st.sidebar.button("Run Test Queries"):
@@ -192,7 +192,7 @@ if st.sidebar.button("Run Test Queries"):
 
     test_queries = [
         ("What is the Trade receivables from BMW Group companies?", "High Confidence"),
-        ("BMW Finance N.V. reported a loss in 2023. What were the key expenses?", "Low Confidence"),
+        ("What are risks associated with the expected development of the Company?", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
@@ -209,7 +209,7 @@ if st.sidebar.button("Run Test Queries"):
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {retrieval_confidence}%")
         st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
-        #if retrieval_confidence >= 50:
-            #st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
-        #else:
-            #st.sidebar.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
+        if retrieval_confidence >= 80:
+            st.sidebar.success(f"✅ High Confidence**Relevant Context:**\n\n {retrieved_text}")
+        else:
+            st.sidebar.warning(f"⚠️ Low Confidence**Relevant Context:**\n\n {retrieved_text}")
