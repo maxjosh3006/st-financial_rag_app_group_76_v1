@@ -13,7 +13,7 @@ import nltk
 #nltk.data.path.clear()  # Clear existing paths
 #nltk.download('punkt', download_dir='/workspaces/appuser/nltk_data')  # Re-download to a known directory
 #nltk.data.path.append('/workspaces/appuser/nltk_data')
-nltk.download('punkt')
+nltk.download('punkt_tab')
 
 from nltk.tokenize import sent_tokenize
 
