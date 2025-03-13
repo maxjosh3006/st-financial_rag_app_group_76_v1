@@ -181,17 +181,17 @@ if query:
         retrieved_text, retrieval_confidence = multistage_retrieve(query)
         st.write(f"### 🔍 Confidence Score: {retrieval_confidence}%")
         #st.success(retrieved_text)
-        if retrieval_confidence >= 70:  # High confidence
-            st.success(f"✅ High Confidence**\n Relevant Context:**\n\n {retrieved_text}")
+        if retrieval_confidence >= 80:  # High confidence
+            st.success(f"✅ High Confidence**\n\n Relevant Context:**\n\n {retrieved_text}")
         else:  # Low confidence
-            st.warning(f"⚠️ Low Confidence**\n Relevant Context:** \n\n {retrieved_text}")
+            st.warning(f"⚠️ Low Confidence**\n\n Relevant Context:** \n\n {retrieved_text}")
 
 # ✅ Testing & Validation
 if st.sidebar.button("Run Test Queries"):
     st.sidebar.header("🔍 Testing & Validation")
 
     test_queries = [
-        ("What is the Trade receivables from BMW Group companies?", "High Confidence"),
+        ("What is the Trade receivables from BMW Group companies as on 31.12.2022?", "High Confidence"),
         ("What are risks associated with the expected development of the Company?", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
@@ -209,8 +209,8 @@ if st.sidebar.button("Run Test Queries"):
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {retrieval_confidence}%")
         #st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
-        if retrieval_confidence >= 70:
-            st.sidebar.success(f"✅ High Confidence**\n Relevant Context:**\n\n {retrieved_text}")
+        if retrieval_confidence >= 80:
+            st.sidebar.success(f"✅ High Confidence**\n\n Relevant Context:**\n\n {retrieved_text}")
         else:
-            st.sidebar.warning(f"⚠️ Low Confidence**\n Relevant Context:** \n\n {retrieved_text}")
+            st.sidebar.warning(f"⚠️ Low Confidence**\n\n Relevant Context:** \n\n {retrieved_text}")
  
