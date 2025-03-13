@@ -83,6 +83,10 @@ keyword_embeddings = classification_model.encode(relevant_keywords)
 def classify_query(query, threshold=0.3):  # 🔹 Lowered threshold to catch more financial queries
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
+     # ✅ Handle empty similarity scores
+    if not similarity_scores:  # If the list is empty, return "irrelevant"
+        return "irrelevant"
+
     return "relevant" if max(similarity_scores) >= threshold else "irrelevant"
 
 # ✅ Hallucination Filtering (Output-Side)
@@ -93,7 +97,7 @@ def filter_hallucinations(response, query, confidence_threshold=50):
     """
     financial_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
                      "earnings", "financial performance", "cash flow", "balance sheet", "receivables", 
-                     "accounts receivable", "trade receivables", "total receivables"]
+                     "accounts receivable", "Trade receivables", "Total receivables"]
     
     if confidence_threshold < 50 and not any(word in response.lower() for word in financial_keywords):
         return "⚠️ The retrieved answer may not be reliable. Please verify with official financial statements."
