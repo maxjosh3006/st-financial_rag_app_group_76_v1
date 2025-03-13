@@ -10,7 +10,9 @@ from sklearn.preprocessing import MinMaxScaler
 import nltk
 
 # ✅ Ensure NLTK's Punkt tokenizer is available
-nltk.download('punkt')
+nltk.data.path.clear()  # Clear existing paths
+nltk.download('punkt', download_dir='/usr/local/share/nltk_data')  # Re-download to a known directory
+
 
 from nltk.tokenize import sent_tokenize
 
