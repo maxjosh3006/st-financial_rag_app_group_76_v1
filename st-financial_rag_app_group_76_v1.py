@@ -58,7 +58,7 @@ tokenized_chunks = [chunk.split() for chunk in text_chunks]
 bm25 = BM25Okapi(tokenized_chunks)
 
 # ✅ Improved Context Extraction (More Precise)
-def extract_relevant_sentences(retrieved_chunks, query, max_sentences=5):
+def extract_relevant_sentences(retrieved_chunks, query, max_sentences=6):
     sentences = []
     for chunk in retrieved_chunks:
         if not chunk or not chunk.strip():  # 🔹 Skip empty chunks
@@ -80,7 +80,7 @@ relevant_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabi
 
 keyword_embeddings = classification_model.encode(relevant_keywords)
     
-def classify_query(query, threshold=0.6):  # 🔹 Lowered threshold to catch more financial queries
+def classify_query(query, threshold=0.5):  # 🔹 Lowered threshold to catch more financial queries
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
      # ✅ Handle empty similarity scores
@@ -106,7 +106,7 @@ def filter_hallucinations(response, query, confidence_threshold=30):
     
 
 # ✅ Multi-Stage Retrieval with Context Filtering , Hallucination Handling & Prompting
-def multistage_retrieve(query, k=3, bm25_k=50, alpha=0.8): 
+def multistage_retrieve(query, k=10, bm25_k=100, alpha=0.8): 
     if not query or not query.strip():
         return "No query provided.", 0.0
 
@@ -159,9 +159,9 @@ def multistage_retrieve(query, k=3, bm25_k=50, alpha=0.8):
 st.title("📊 Financial Statement Q&A")
 query = st.text_input("Enter your financial question:", key="financial_query")
 # Apply query prompt formatting
-#query = f"Provide a precise, structured, and numerical answer for the following financial query. \
-#Only include relevant financial figures and explanations within a maximum of 3 sentences. \
-#query: {user_query}"
+user_query = f"Provide a precise, structured, and numerical answer for the following financial query. \
+Only include relevant financial figures and explanations within a maximum of 3 sentences. \
+query: {user_query}"
 
 if query:
     query_type = classify_query(query)
