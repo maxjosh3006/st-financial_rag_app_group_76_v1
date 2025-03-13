@@ -153,7 +153,11 @@ def multistage_retrieve(query, k=3, bm25_k=20, alpha=0.7):
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
-query = st.text_input("Enter your financial question:", key="financial_query")
+user_query = st.text_input("Enter your financial question:", key="financial_query")
+# Apply query prompt formatting
+query = f"Provide a precise, structured, and numerical answer for the following financial query. \
+Only include relevant financial figures and explanations within a maximum of 3 sentences. \
+Query: {user_query}"
 
 if query:
     query_type = classify_query(query)
@@ -180,7 +184,7 @@ if st.sidebar.button("Run Test Queries"):
         ("What is the capital of France?", "Irrelevant")
     ]
 
-    for test_query in test_queries:
+    for test_query, confidence_level in test_queries:
         query_type = classify_query(test_query)
 
         if query_type == "irrelevant":
