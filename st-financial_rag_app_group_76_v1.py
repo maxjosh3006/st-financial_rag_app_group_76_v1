@@ -10,9 +10,6 @@ from sklearn.preprocessing import MinMaxScaler
 import nltk
 
 # ✅ Ensure NLTK's Punkt tokenizer is available
-#nltk.data.path.clear()  # Clear existing paths
-#nltk.download('punkt', download_dir='/workspaces/appuser/nltk_data')  # Re-download to a known directory
-#nltk.data.path.append('/workspaces/appuser/nltk_data')
 nltk.download('punkt_tab')
 
 from nltk.tokenize import sent_tokenize
@@ -74,20 +71,31 @@ def extract_relevant_sentences(retrieved_chunks, query, max_sentences=6):
     
 # ✅ Query Classification Fix (Better Threshold)
 classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-relevant_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
-                     "earnings", "financial performance", "cash flow", "balance sheet", "receivables", 
-                     "accounts receivable", "trade receivables", "total receivables"]
+relevant_keywords = [
+    "revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
+    "earnings", "financial performance", "cash flow", "balance sheet", "receivables", 
+    "accounts receivable", "trade receivables", "total receivables",
+    "net loss", "operating expenses", "financial risk", "depreciation", "interest expense"
+]
 
 keyword_embeddings = classification_model.encode(relevant_keywords)
     
-def classify_query(query, threshold=0.5):  # 🔹 Lowered threshold to catch more financial queries
+from thefuzz import process
+
+def classify_query(query, threshold=0.5):  
+    # First, check with embedding similarity
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
-     # ✅ Handle empty similarity scores
-    if not similarity_scores:  # If the list is empty, return "irrelevant"
-        return "irrelevant"
 
-    return "relevant" if max(similarity_scores) >= threshold else "irrelevant"
+    if similarity_scores and max(similarity_scores) >= threshold:
+        return "relevant"
+
+    # Fuzzy matching as a fallback
+    best_match, score = process.extractOne(query, relevant_keywords)
+    if score > 80:  # Adjust score threshold as needed
+        return "relevant"
+
+    return "irrelevant"
 
 # ✅ Hallucination Filtering (Output-Side)
 def filter_hallucinations(response, query, confidence_threshold=30):
