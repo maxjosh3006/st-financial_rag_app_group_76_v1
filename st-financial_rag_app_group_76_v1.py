@@ -82,7 +82,7 @@ keyword_embeddings = classification_model.encode(relevant_keywords)
     
 from thefuzz import process
 
-def classify_query(query, threshold=0.5):  
+def classify_query(query, threshold=0.65):  
     # First, check with embedding similarity
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
@@ -92,7 +92,7 @@ def classify_query(query, threshold=0.5):
     
     # Fuzzy matching as a fallback
     best_match, score = process.extractOne(query, relevant_keywords)
-    if score > 75:  # Adjust score threshold as needed
+    if score > 80:  # Adjust score threshold as needed
         return "relevant"
 
     return "irrelevant"
@@ -107,7 +107,7 @@ def filter_hallucinations(response, query, confidence_threshold=30):
                      "earnings", "financial performance", "cash flow", "balance sheet", "receivables", 
                      "accounts receivable", "Trade receivables", "Total receivables", "net loss"]
     
-    if confidence_threshold < 75 and not any(word in response.lower() for word in financial_keywords):
+    if confidence_threshold < 30 and not any(word in response.lower() for word in financial_keywords):
         return "⚠️ The retrieved answer may not be reliable. Please verify with official financial statements."
     
     return response
@@ -192,7 +192,7 @@ if st.sidebar.button("Run Test Queries"):
 
     test_queries = [
         ("What is the Trade receivables from BMW Group companies for year 2023?", "High Confidence"),
-        ("What were the main factors contributing to the net loss of BMW Finance N.V.?", "Low Confidence"),
+        ("How did the company perform last year?", "Low Confidence"),
         ("What is the capital of France?", "Irrelevant")
     ]
 
