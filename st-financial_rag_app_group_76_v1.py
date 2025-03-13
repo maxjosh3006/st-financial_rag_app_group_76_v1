@@ -12,7 +12,8 @@ import nltk
 # ✅ Ensure NLTK's Punkt tokenizer is available
 #nltk.data.path.clear()  # Clear existing paths
 #nltk.download('punkt', download_dir='/workspaces/appuser/nltk_data')  # Re-download to a known directory
-nltk.data.path.append('/workspaces/appuser/nltk_data')
+#nltk.data.path.append('/workspaces/appuser/nltk_data')
+nltk.download('punkt')
 
 from nltk.tokenize import sent_tokenize
 
