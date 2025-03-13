@@ -80,7 +80,7 @@ relevant_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabi
 
 keyword_embeddings = classification_model.encode(relevant_keywords)
     
-def classify_query(query, threshold=0.3):  # 🔹 Lowered threshold to catch more financial queries
+def classify_query(query, threshold=0.6):  # 🔹 Lowered threshold to catch more financial queries
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
      # ✅ Handle empty similarity scores
@@ -157,11 +157,11 @@ def multistage_retrieve(query, k=3, bm25_k=20, alpha=0.7):
 
 # ✅ Streamlit UI
 st.title("📊 Financial Statement Q&A")
-user_query = st.text_input("Enter your financial question:", key="financial_query")
+query = st.text_input("Enter your financial question:", key="financial_query")
 # Apply query prompt formatting
-query = f"Provide a precise, structured, and numerical answer for the following financial query. \
-Only include relevant financial figures and explanations within a maximum of 3 sentences. \
-Query: {user_query}"
+#query = f"Provide a precise, structured, and numerical answer for the following financial query. \
+#Only include relevant financial figures and explanations within a maximum of 3 sentences. \
+#query: {user_query}"
 
 if query:
     query_type = classify_query(query)
@@ -172,11 +172,11 @@ if query:
     else:
         retrieved_text, retrieval_confidence = multistage_retrieve(query)
         st.write(f"### 🔍 Confidence Score: {retrieval_confidence}%")
-
-        if retrieval_confidence >= 80:  # High confidence
-            st.success(f"**✅ Relevant Information:**\n\n {retrieved_text}")
-        else:  # Low confidence
-            st.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
+        st.success(retrieved_text)
+        #if retrieval_confidence >= 80:  # High confidence
+            #st.success(f"**✅ Relevant Information:**\n\n {retrieved_text}")
+        #else:  # Low confidence
+            #st.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
 
 # ✅ Testing & Validation
 if st.sidebar.button("Run Test Queries"):
