@@ -201,7 +201,7 @@ if st.sidebar.button("Run Test Queries"):
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {retrieval_confidence}%")
 
-        if retrieval_confidence >= 50:
-            st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
-        else:
-            st.sidebar.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
+        #if retrieval_confidence >= 50:
+            #st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
+        #else:
+            #st.sidebar.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
