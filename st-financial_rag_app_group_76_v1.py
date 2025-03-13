@@ -97,16 +97,16 @@ def filter_hallucinations(response, query, confidence_threshold=30):
     """
     financial_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
                      "earnings", "financial performance", "cash flow", "balance sheet", "receivables", 
-                     "accounts receivable", "Trade receivables", "Total receivables"]
+                     "accounts receivable", "Trade receivables", "Total receivables", "net loss"]
     
-    if confidence_threshold < 50 and not any(word in response.lower() for word in financial_keywords):
+    if confidence_threshold < 75 and not any(word in response.lower() for word in financial_keywords):
         return "⚠️ The retrieved answer may not be reliable. Please verify with official financial statements."
     
     return response
     
 
 # ✅ Multi-Stage Retrieval with Context Filtering , Hallucination Handling & Prompting
-def multistage_retrieve(query, k=5, bm25_k=50, alpha=0.8): 
+def multistage_retrieve(query, k=3, bm25_k=50, alpha=0.8): 
     if not query or not query.strip():
         return "No query provided.", 0.0
 
@@ -200,7 +200,7 @@ if st.sidebar.button("Run Test Queries"):
         retrieved_text, retrieval_confidence = multistage_retrieve(test_query)
         st.sidebar.write(f"**🔹 Query:** {test_query}")
         st.sidebar.write(f"**🔍 Confidence Score:** {retrieval_confidence}%")
-
+        st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
         #if retrieval_confidence >= 50:
             #st.sidebar.success(f"✅ **Relevant Information:**\n\n {retrieved_text}")
         #else:
