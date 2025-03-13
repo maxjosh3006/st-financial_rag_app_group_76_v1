@@ -72,6 +72,14 @@ def extract_relevant_sentences(retrieved_chunks, query, max_sentences=3):
 
     return " ".join(sentences[:max_sentences]) if sentences else "No relevant data found."
     
+# ✅ Query Classification Fix (Better Threshold)
+classification_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+relevant_keywords = ["revenue", "profit", "expenses", "income", "assets", "liabilities", "equity", 
+                     "earnings", "financial performance", "cash flow", "balance sheet", "receivables", 
+                     "accounts receivable", "trade receivables", "total receivables"]
+
+keyword_embeddings = classification_model.encode(relevant_keywords)
+    
 def classify_query(query, threshold=0.3):  # 🔹 Lowered threshold to catch more financial queries
     query_embedding = classification_model.encode(query)
     similarity_scores = util.cos_sim(query_embedding, keyword_embeddings).squeeze().tolist()
@@ -153,7 +161,7 @@ if query:
         retrieved_text, retrieval_confidence = multistage_retrieve(query)
         st.write(f"### 🔍 Confidence Score: {retrieval_confidence}%")
 
-        if retrieval_confidence >= 50:  # High confidence
+        if retrieval_confidence >= 80:  # High confidence
             st.success(f"**✅ Relevant Information:**\n\n {retrieved_text}")
         else:  # Low confidence
             st.warning(f"⚠️ **Low Confidence Data:**\n\n {retrieved_text}")
