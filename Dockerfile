@@ -1,22 +1,41 @@
-# Build stage
-FROM python:3.12.9-slim as builder
+FROM python:3.9-slim
 
-WORKDIR /st-financial_rag_app_group_76
 
-# Copy requirements and install dependencies
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first to leverage Docker cache
 COPY requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Runtime stage
-FROM python:3.12.9-slim
+# Pre-download NLTK data and ensure cache directory exists
+RUN python -c "import nltk; nltk.download('punkt')" && \
+    mkdir -p /root/.cache
 
-WORKDIR /st-financial_rag_app
+# Copy the application code and PDF
+COPY . .
 
-# Copy necessary files from the builder stage
-COPY --from=builder /st-financialragappgroup76v1/ /st-financialragappgroup76v1/
+# Create non-root user and set permissions
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app && \
+    chown -R appuser:appuser /root/.cache
 
-# Expose the Streamlit port
+USER appuser
+
+# Expose Streamlit port
 EXPOSE 8501
 
-# Set the entrypoint to run Streamlit
-ENTRYPOINT ["streamlit", "run", "st-financialragappgroup76v1.py"]
+# Healthcheck
+HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
+
+# Command to run the application
+ENTRYPOINT ["streamlit", "run", "st-financial_rag_app_group_76_v1.py", "--server.address=0.0.0.0"]
